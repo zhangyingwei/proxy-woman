@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ProxyWoman Body Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>ProxyWoman Body 数据处理测试</h1>
+    
+    <div class="test-case">
+        <h3>测试 1: 字符串数据</h3>
+        <div id="test1-result" class="result"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试 2: 数字数组数据 (模拟Go []byte)</h3>
+        <div id="test2-result" class="result"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试 3: Uint8Array数据</h3>
+        <div id="test3-result" class="result"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试 4: Base64字符串数据</h3>
+        <div id="test4-result" class="result"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试 5: 空数据</h3>
+        <div id="test5-result" class="result"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试 6: JSON数据</h3>
+        <div id="test6-result" class="result"></div>
+    </div>
+
+    <script>
+        // 复制修复后的 bytesToString 函数
+        function bytesToString(bytes) {
+            console.log('Processing:', typeof bytes, bytes);
+            
+            if (!bytes) return '';
+            
+            // 如果已经是字符串，直接返回
+            if (typeof bytes === 'string') {
+                console.log('Body is already a string, length:', bytes.length);
+                return bytes;
+            }
+            
+            // 如果是数组（从Go的[]byte转换而来）
+            if (Array.isArray(bytes)) {
+                if (bytes.length === 0) return '';
+                try {
+                    console.log('Converting array to string, length:', bytes.length);
+                    const result = new TextDecoder().decode(new Uint8Array(bytes));
+                    console.log('Array conversion successful, result length:', result.length);
+                    return result;
+                } catch (error) {
+                    console.warn('Failed to decode byte array:', error);
+                    return String(bytes);
+                }
+            }
+            
+            // 如果是Uint8Array
+            if (bytes instanceof Uint8Array) {
+                if (bytes.length === 0) return '';
+                console.log('Converting Uint8Array to string, length:', bytes.length);
+                return new TextDecoder().decode(bytes);
+            }
+            
+            // 如果是base64字符串
+            if (typeof bytes === 'string' && bytes.match(/^[A-Za-z0-9+/]*={0,2}$/)) {
+                try {
+                    console.log('Attempting base64 decode');
+                    const binaryString = atob(bytes);
+                    const uint8Array = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        uint8Array[i] = binaryString.charCodeAt(i);
+                    }
+                    const result = new TextDecoder().decode(uint8Array);
+                    console.log('Base64 decode successful');
+                    return result;
+                } catch (error) {
+                    console.log('Base64 decode failed, treating as regular string');
+                    return bytes;
+                }
+            }
+            
+            // 其他情况，尝试转换为字符串
+            console.log('Converting unknown type to string:', typeof bytes);
+            return String(bytes);
+        }
+
+        function runTest(testId, testData, expectedResult, description) {
+            const resultDiv = document.getElementById(testId + '-result');
+            try {
+                const result = bytesToString(testData);
+                const success = result === expectedResult;
+                
+                resultDiv.className = 'result ' + (success ? 'success' : 'error');
+                resultDiv.innerHTML = `
+                    <strong>${description}</strong><br>
+                    <strong>输入:</strong> ${JSON.stringify(testData)}<br>
+                    <strong>期望:</strong> "${expectedResult}"<br>
+                    <strong>实际:</strong> "${result}"<br>
+                    <strong>结果:</strong> ${success ? '✅ 通过' : '❌ 失败'}
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <strong>${description}</strong><br>
+                    <strong>错误:</strong> ${error.message}<br>
+                    <strong>结果:</strong> ❌ 异常
+                `;
+            }
+        }
+
+        // 运行测试
+        window.onload = function() {
+            console.log('开始运行测试...');
+            
+            // 测试 1: 字符串数据
+            runTest('test1', 'Hello World', 'Hello World', '直接字符串输入');
+            
+            // 测试 2: 数字数组数据 (模拟Go []byte)
+            const jsonBytes = [123, 34, 109, 101, 115, 115, 97, 103, 101, 34, 58, 34, 72, 101, 108, 108, 111, 34, 125];
+            runTest('test2', jsonBytes, '{"message":"Hello"}', '数字数组转换 (Go []byte)');
+            
+            // 测试 3: Uint8Array数据
+            const uint8Data = new Uint8Array([72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100]);
+            runTest('test3', uint8Data, 'Hello World', 'Uint8Array转换');
+            
+            // 测试 4: Base64字符串数据
+            const base64Data = btoa('Hello Base64');
+            runTest('test4', base64Data, 'Hello Base64', 'Base64字符串解码');
+            
+            // 测试 5: 空数据
+            runTest('test5', null, '', '空数据处理');
+            
+            // 测试 6: JSON数据
+            const jsonString = '{"name":"ProxyWoman","version":"1.0"}';
+            runTest('test6', jsonString, jsonString, 'JSON字符串处理');
+            
+            console.log('所有测试完成');
+        };
+    </script>
+</body>
+</html>

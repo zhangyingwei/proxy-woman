@@ -1,0 +1,895 @@
+<script lang="ts">
+  import { selectedFlow } from '../stores/selectionStore';
+  import JsonTreeView from './JsonTreeView.svelte';
+  import SimpleCodeEditor from './SimpleCodeEditor.svelte';
+  import DecodingSelector from './DecodingSelector.svelte';
+  import { DecryptRequestBody, DecryptResponseBody } from '../../wailsjs/go/main/App';
+
+  // 标签状态
+  let activeRequestTab: 'headers' | 'payload' | 'debug' = 'headers';
+  let activeResponseTab: 'headers' | 'payload' | 'debug' = 'headers';
+
+  // 解码状态
+  let requestDecodingMode: 'original' | 'auto' | 'manual' = 'auto';
+  let responseDecodingMode: 'original' | 'auto' | 'manual' = 'auto';
+  let requestDecodedContent: string = '';
+  let responseDecodedContent: string = '';
+  let requestDecodingMethod: string = '';
+  let responseDecodingMethod: string = '';
+
+  const DEBUG_ENABLED = false;
+
+  // 字节转字符串
+  function bytesToString(bytes: any): string {
+    if (!bytes) return '';
+
+    if (typeof bytes === 'string') {
+      return bytes;
+    }
+
+    if (bytes instanceof Uint8Array) {
+      try {
+        return new TextDecoder().decode(bytes);
+      } catch (error) {
+        return String(bytes);
+      }
+    }
+
+    return String(bytes);
+  }
+
+  // 解密并转换字节为字符串
+  async function decryptAndBytesToString(bytes: any, headers: Record<string, string>, isRequest: boolean = false): Promise<string> {
+    if (!bytes) return '';
+
+    let uint8Array: Uint8Array;
+
+    if (bytes instanceof Uint8Array) {
+      uint8Array = bytes;
+    } else if (Array.isArray(bytes)) {
+      uint8Array = new Uint8Array(bytes);
+    } else if (typeof bytes === 'string') {
+      return bytes;
+    } else {
+      return String(bytes);
+    }
+
+    try {
+      // 尝试解密
+      const decrypted = isRequest
+        ? await decryptRequestBody(uint8Array, headers)
+        : await decryptResponseBody(uint8Array, headers);
+
+      return bytesToString(decrypted);
+    } catch (error) {
+      console.warn('Decryption failed, using original data:', error);
+      return bytesToString(uint8Array);
+    }
+  }
+
+  // 检查是否为JSON
+  function isJSON(str: string): boolean {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // 解析JSON
+  function parseJSON(str: string): any {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return null;
+    }
+  }
+
+  // 检查是否为HTML
+  function isHTML(contentType: string): boolean {
+    return contentType && (contentType.includes('text/html') || contentType.includes('application/xhtml'));
+  }
+
+  // 检查是否为JavaScript
+  function isJavaScript(contentType: string, url: string = ''): boolean {
+    if (contentType) {
+      const lowerType = contentType.toLowerCase();
+      return lowerType.includes('javascript') ||
+             lowerType.includes('application/js') ||
+             lowerType.includes('text/js') ||
+             lowerType.includes('application/x-javascript') ||
+             lowerType.includes('text/javascript') ||
+             lowerType.includes('application/ecmascript') ||
+             lowerType.includes('text/ecmascript');
+    }
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.includes('.js') ||
+           lowerUrl.includes('.mjs') ||
+           lowerUrl.includes('.jsx');
+  }
+
+  // 检查是否为CSS
+  function isCSS(contentType: string, url: string = ''): boolean {
+    if (contentType) {
+      const lowerType = contentType.toLowerCase();
+      return lowerType.includes('text/css') ||
+             lowerType.includes('application/css');
+    }
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.includes('.css') ||
+           lowerUrl.includes('.scss') ||
+           lowerUrl.includes('.sass') ||
+           lowerUrl.includes('.less');
+  }
+
+  // 检查是否为图片
+  function isImage(contentType: string): boolean {
+    return contentType && contentType.startsWith('image/');
+  }
+
+  // 检查是否可能是压缩/编码的文本内容
+  function isCompressedText(bodyText: string, contentType: string, url: string = ''): boolean {
+    const isTextType = contentType && (
+      contentType.includes('text/') ||
+      contentType.includes('application/javascript') ||
+      contentType.includes('application/json') ||
+      contentType.includes('application/xml')
+    );
+    
+    const isTextUrl = url && (
+      url.includes('.js') || url.includes('.css') || 
+      url.includes('.json') || url.includes('.xml') ||
+      url.includes('.txt')
+    );
+    
+    const looksLikeBase64 = /^[A-Za-z0-9+/=]+$/.test(bodyText.trim()) && bodyText.length > 100;
+    
+    return (isTextType || isTextUrl) && looksLikeBase64;
+  }
+
+  // 安全解码内容
+  function safeDecodeContent(encodedText: string): string {
+    try {
+      return atob(encodedText);
+    } catch (error) {
+      console.warn('Failed to decode content:', error);
+      return encodedText;
+    }
+  }
+
+  // 获取显示内容（根据当前显示模式）
+  function getDisplayContent(bodyText: string, contentType: string, url: string): string {
+    if (isCompressedText(bodyText, contentType, url) && showDecodedContent) {
+      return safeDecodeContent(bodyText);
+    }
+    return bodyText;
+  }
+
+  // 安全的base64编码
+  function safeBase64Encode(text: string): string {
+    try {
+      return btoa(text);
+    } catch (error) {
+      console.warn('Failed to encode base64:', error);
+      try {
+        return btoa(unescape(encodeURIComponent(text)));
+      } catch (error2) {
+        console.error('Failed to encode base64 with UTF-8:', error2);
+        return '';
+      }
+    }
+  }
+
+  // 切换请求标签
+  function switchRequestTab(tab: 'headers' | 'payload' | 'debug') {
+    activeRequestTab = tab;
+  }
+
+  // 切换响应标签
+  function switchResponseTab(tab: 'headers' | 'payload' | 'debug') {
+    activeResponseTab = tab;
+  }
+
+  // 处理请求解码变化
+  function handleRequestDecodingChange(event: CustomEvent) {
+    const { mode, content, method } = event.detail;
+    requestDecodingMode = mode;
+    requestDecodedContent = content;
+    requestDecodingMethod = method || '';
+  }
+
+  // 处理响应解码变化
+  function handleResponseDecodingChange(event: CustomEvent) {
+    const { mode, content, method } = event.detail;
+    responseDecodingMode = mode;
+    responseDecodedContent = content;
+    responseDecodingMethod = method || '';
+  }
+
+  // 解密请求体
+  async function decryptRequestBody(body: Uint8Array, headers: Record<string, string>): Promise<Uint8Array> {
+    try {
+      return await DecryptRequestBody(Array.from(body), headers);
+    } catch (error) {
+      console.warn('Failed to decrypt request body:', error);
+      return body;
+    }
+  }
+
+  // 解密响应体
+  async function decryptResponseBody(body: Uint8Array, headers: Record<string, string>): Promise<Uint8Array> {
+    try {
+      return await DecryptResponseBody(Array.from(body), headers);
+    } catch (error) {
+      console.warn('Failed to decrypt response body:', error);
+      return body;
+    }
+  }
+
+  // 格式化内容
+  function formatContent(content: string, contentType: string, url: string = ''): string {
+    try {
+      // JSON格式化
+      if (isJSON(content)) {
+        return JSON.stringify(JSON.parse(content), null, 2);
+      }
+
+      // JavaScript格式化（简单的缩进处理）
+      if (isJavaScript(contentType, url)) {
+        return formatJavaScript(content);
+      }
+
+      // CSS格式化（简单的缩进处理）
+      if (isCSS(contentType, url)) {
+        return formatCSS(content);
+      }
+
+      // HTML格式化（简单的缩进处理）
+      if (isHTML(contentType)) {
+        return formatHTML(content);
+      }
+
+      return content;
+    } catch (error) {
+      console.warn('Failed to format content:', error);
+      return content;
+    }
+  }
+
+  // 改进的JavaScript格式化
+  function formatJavaScript(code: string): string {
+    try {
+      let formatted = code
+        // 处理函数声明和表达式
+        .replace(/function\s*\(/g, 'function (')
+        .replace(/\)\s*{/g, ') {\n  ')
+        // 处理对象和数组
+        .replace(/{\s*/g, '{\n  ')
+        .replace(/\s*}/g, '\n}')
+        .replace(/\[\s*/g, '[\n  ')
+        .replace(/\s*\]/g, '\n]')
+        // 处理语句结束
+        .replace(/;\s*/g, ';\n')
+        // 处理逗号分隔
+        .replace(/,\s*/g, ',\n  ')
+        // 处理操作符
+        .replace(/\s*=\s*/g, ' = ')
+        .replace(/\s*==\s*/g, ' == ')
+        .replace(/\s*===\s*/g, ' === ')
+        .replace(/\s*!=\s*/g, ' != ')
+        .replace(/\s*!==\s*/g, ' !== ')
+        // 处理控制结构
+        .replace(/if\s*\(/g, 'if (')
+        .replace(/for\s*\(/g, 'for (')
+        .replace(/while\s*\(/g, 'while (')
+        .replace(/\)\s*{/g, ') {\n  ');
+
+      // 分行并处理缩进
+      let lines = formatted.split('\n');
+      let indentLevel = 0;
+      let result = [];
+
+      for (let line of lines) {
+        line = line.trim();
+        if (line.length === 0) continue;
+
+        // 减少缩进
+        if (line.includes('}') || line.includes(']')) {
+          indentLevel = Math.max(0, indentLevel - 1);
+        }
+
+        // 添加缩进
+        result.push('  '.repeat(indentLevel) + line);
+
+        // 增加缩进
+        if (line.includes('{') || line.includes('[')) {
+          indentLevel++;
+        }
+      }
+
+      return result.join('\n');
+    } catch (error) {
+      console.warn('JavaScript formatting failed:', error);
+      return code;
+    }
+  }
+
+  // 改进的CSS格式化
+  function formatCSS(css: string): string {
+    try {
+      let formatted = css
+        // 移除多余的空白
+        .replace(/\s+/g, ' ')
+        .trim()
+        // 处理选择器
+        .replace(/,\s*/g, ',\n')
+        // 处理规则块开始
+        .replace(/\s*{\s*/g, ' {\n  ')
+        // 处理规则块结束
+        .replace(/\s*}\s*/g, '\n}\n\n')
+        // 处理属性
+        .replace(/;\s*/g, ';\n  ')
+        // 处理冒号
+        .replace(/:\s*/g, ': ')
+        // 处理媒体查询
+        .replace(/@media\s+/g, '@media ')
+        .replace(/@keyframes\s+/g, '@keyframes ');
+
+      // 分行并处理缩进
+      let lines = formatted.split('\n');
+      let indentLevel = 0;
+      let result = [];
+
+      for (let line of lines) {
+        line = line.trim();
+        if (line.length === 0) {
+          result.push('');
+          continue;
+        }
+
+        // 减少缩进
+        if (line === '}') {
+          indentLevel = Math.max(0, indentLevel - 1);
+        }
+
+        // 添加缩进
+        result.push('  '.repeat(indentLevel) + line);
+
+        // 增加缩进
+        if (line.includes('{')) {
+          indentLevel++;
+        }
+      }
+
+      // 清理多余的空行
+      return result
+        .join('\n')
+        .replace(/\n\n\n+/g, '\n\n')
+        .trim();
+    } catch (error) {
+      console.warn('CSS formatting failed:', error);
+      return css;
+    }
+  }
+
+  // 简单的HTML格式化
+  function formatHTML(html: string): string {
+    return html
+      .replace(/></g, '>\n<')
+      .replace(/^\s+|\s+$/g, '')
+      .split('\n')
+      .map((line, index, array) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('</')) {
+          return trimmed;
+        }
+        return trimmed;
+      })
+      .join('\n');
+  }
+
+  // 获取格式化后的显示内容
+  function getFormattedDisplayContent(bodyText: string, contentType: string, url: string): string {
+    const displayContent = getDisplayContent(bodyText, contentType, url);
+    return formatContent(displayContent, contentType, url);
+  }
+</script>
+
+<div class="detail-view">
+  {#if $selectedFlow}
+    <div class="panels-container">
+      <!-- 左侧：请求面板 -->
+      <div class="request-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">请求</h3>
+        </div>
+        
+        <!-- 请求标签导航 -->
+        <div class="sub-tab-nav">
+          <div class="tab-buttons">
+            <button
+              class="sub-tab-button"
+              class:active={activeRequestTab === 'headers'}
+              on:click={() => switchRequestTab('headers')}
+            >
+              标头
+            </button>
+            <button
+              class="sub-tab-button"
+              class:active={activeRequestTab === 'payload'}
+              on:click={() => switchRequestTab('payload')}
+            >
+              载荷
+            </button>
+            {#if DEBUG_ENABLED}
+              <button
+                class="sub-tab-button debug-tab"
+                class:active={activeRequestTab === 'debug'}
+                on:click={() => switchRequestTab('debug')}
+              >
+                Debug
+              </button>
+            {/if}
+          </div>
+
+          <!-- 解码控制器 -->
+          {#if activeRequestTab === 'payload' && $selectedFlow.request?.body}
+            {@const bodyText = bytesToString($selectedFlow.request.body)}
+            {@const contentType = $selectedFlow.request?.headers?.['Content-Type'] || ''}
+            {@const url = $selectedFlow.url || ''}
+            <div class="decode-controls">
+              <DecodingSelector
+                content={bodyText}
+                contentType={contentType}
+                url={url}
+                currentMode={requestDecodingMode}
+                on:modeChange={handleRequestDecodingChange}
+              />
+            </div>
+          {/if}
+        </div>
+
+        <!-- 请求内容 -->
+        <div class="panel-content">
+          {#if activeRequestTab === 'headers'}
+            <div class="headers-view">
+              <div class="headers-grid">
+                {#each Object.entries($selectedFlow.request?.headers || {}) as [key, value]}
+                  <div class="header-name">{key}:</div>
+                  <div class="header-value">{value}</div>
+                {/each}
+              </div>
+            </div>
+          {:else if activeRequestTab === 'payload'}
+            <div class="payload-view">
+              <!-- GET请求显示Query参数 -->
+              {#if $selectedFlow.method === 'GET' && $selectedFlow.url}
+                {@const url = new URL($selectedFlow.url)}
+                {@const queryParams = Array.from(url.searchParams.entries())}
+                {#if queryParams.length > 0}
+                  <div class="query-params-section">
+                    <h4 class="section-title">Query 参数</h4>
+                    <div class="query-params-grid">
+                      {#each queryParams as [key, value]}
+                        <div class="param-name">{key}:</div>
+                        <div class="param-value">{value}</div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              {/if}
+
+              <!-- 请求体内容 -->
+              {#if $selectedFlow.request?.body}
+                {@const bodyText = bytesToString($selectedFlow.request.body)}
+                {#if bodyText && bodyText.length > 0}
+                  {@const contentType = $selectedFlow.request?.headers?.['Content-Type'] || ''}
+                  {@const displayContent = requestDecodedContent || bodyText}
+                  {@const formattedContent = formatContent(displayContent, contentType)}
+
+                  <div class="body-section">
+                    <h4 class="section-title">请求体</h4>
+                    <SimpleCodeEditor
+                      value={formattedContent}
+                      language={contentType}
+                      height="300px"
+                    />
+                  </div>
+                {:else if $selectedFlow.method !== 'GET'}
+                  <div class="empty-body">无载荷数据</div>
+                {/if}
+              {:else if $selectedFlow.method !== 'GET'}
+                <div class="empty-body">无载荷数据</div>
+              {/if}
+            </div>
+
+          {/if}
+        </div>
+      </div>
+
+      <!-- 右侧：响应面板 -->
+      <div class="response-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">响应</h3>
+        </div>
+        
+        <!-- 响应标签导航 -->
+        <div class="sub-tab-nav">
+          <div class="tab-buttons">
+            <button
+              class="sub-tab-button"
+              class:active={activeResponseTab === 'headers'}
+              on:click={() => switchResponseTab('headers')}
+            >
+              标头
+            </button>
+            <button
+              class="sub-tab-button"
+              class:active={activeResponseTab === 'payload'}
+              on:click={() => switchResponseTab('payload')}
+            >
+              响应
+            </button>
+            {#if DEBUG_ENABLED}
+              <button
+                class="sub-tab-button debug-tab"
+                class:active={activeResponseTab === 'debug'}
+                on:click={() => switchResponseTab('debug')}
+              >
+                Debug
+              </button>
+            {/if}
+          </div>
+
+          <!-- 解码控制器 -->
+          {#if activeResponseTab === 'payload' && $selectedFlow.response?.body}
+            {@const bodyText = bytesToString($selectedFlow.response.body)}
+            {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
+            {@const url = $selectedFlow.url || ''}
+            <div class="decode-controls">
+              <DecodingSelector
+                content={bodyText}
+                contentType={contentType}
+                url={url}
+                currentMode={responseDecodingMode}
+                on:modeChange={handleResponseDecodingChange}
+              />
+            </div>
+          {/if}
+        </div>
+
+        <!-- 响应内容 -->
+        <div class="panel-content">
+          {#if activeResponseTab === 'headers'}
+            <div class="headers-view">
+              <div class="headers-grid">
+                {#each Object.entries($selectedFlow.response?.headers || {}) as [key, value]}
+                  <div class="header-name">{key}:</div>
+                  <div class="header-value">{value}</div>
+                {/each}
+              </div>
+            </div>
+          {:else if activeResponseTab === 'payload'}
+            <div class="response-view">
+              {#if $selectedFlow.response?.body}
+                {@const bodyText = bytesToString($selectedFlow.response.body)}
+                {#if bodyText && bodyText.length > 0}
+                  {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
+                  {@const displayContent = responseDecodedContent || bodyText}
+
+                  {#if isImage(contentType)}
+                    <div class="image-preview">
+                      {#if bodyText}
+                        <div class="image-container">
+                          <img
+                            src="data:{contentType};base64,{bodyText}"
+                            alt="Response Image"
+                            class="response-image"
+                            on:error={(e) => {
+                              const encoded = safeBase64Encode(bodyText);
+                              if (encoded && encoded !== bodyText) {
+                                e.target.src = `data:${contentType};base64,${encoded}`;
+                              }
+                            }}
+                          />
+                        </div>
+                      {:else}
+                        <div class="error-message">无图片数据</div>
+                      {/if}
+                    </div>
+                  {:else if isHTML(contentType)}
+                    <div class="html-preview">
+                      <iframe
+                        srcdoc={displayContent}
+                        class="html-iframe"
+                        title="HTML Preview"
+                      ></iframe>
+                    </div>
+                  {:else}
+                    {@const formattedContent = formatContent(displayContent, contentType)}
+                    <SimpleCodeEditor
+                      value={formattedContent}
+                      language={contentType}
+                      height="400px"
+                    />
+                  {/if}
+                {:else}
+                  <div class="empty-body">无响应数据</div>
+                {/if}
+              {:else}
+                <div class="empty-body">无响应数据</div>
+              {/if}
+            </div>
+
+          {/if}
+        </div>
+      </div>
+    </div>
+  {:else}
+    <div class="empty-state">
+      <p>请选择一个请求以查看详情</p>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .detail-view {
+    height: 100%;
+    background-color: #1E1E1E;
+    color: #CCCCCC;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panels-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .request-panel,
+  .response-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .request-panel {
+    border-right: 1px solid #3E3E42;
+  }
+
+  .panel-header {
+    background-color: #2D2D30;
+    padding: 8px 12px;
+    border-bottom: 1px solid #3E3E42;
+  }
+
+  .panel-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: #CCCCCC;
+  }
+
+  .sub-tab-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #252526;
+    border-bottom: 1px solid #3E3E42;
+  }
+
+  .tab-buttons {
+    display: flex;
+  }
+
+  .decode-controls {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+  }
+
+  .sub-tab-button {
+    background: none;
+    border: none;
+    color: #888;
+    padding: 8px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .sub-tab-button:hover {
+    color: #CCCCCC;
+    background-color: #2D2D30;
+  }
+
+  .sub-tab-button.active {
+    color: #007ACC;
+    border-bottom-color: #007ACC;
+    background-color: #1E1E1E;
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+    text-align: left;
+  }
+
+  .headers-view {
+    background-color: #1E1E1E;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+  }
+
+  .headers-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 8px 16px;
+    align-items: start;
+  }
+
+  .header-name {
+    color: #569CD6;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+    padding-right: 8px;
+  }
+
+  .header-value {
+    color: #D4D4D4;
+    word-break: break-all;
+    text-align: left;
+  }
+
+  .payload-view,
+  .response-view {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+  }
+
+  .json-tree-container {
+    padding: 12px;
+    background-color: #1E1E1E;
+    border-radius: 4px;
+    overflow: auto;
+    max-height: 400px;
+    text-align: left;
+  }
+
+  .text-body,
+  .code-body {
+    background-color: #1E1E1E;
+    color: #D4D4D4;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    text-align: left;
+  }
+
+  .raw-content {
+    background-color: #1E1E1E;
+    color: #D4D4D4;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    text-align: left;
+  }
+
+  .empty-body {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    padding: 20px;
+  }
+
+  .query-params-section,
+  .body-section {
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #CCCCCC;
+    margin: 0 0 8px 0;
+    padding: 4px 8px;
+    background-color: #2D2D30;
+    border-radius: 4px;
+    border-left: 3px solid #007ACC;
+  }
+
+  .query-params-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    background-color: #1E1E1E;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #3E3E42;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .param-name {
+    color: #9CDCFE;
+    font-weight: 500;
+    font-size: 11px;
+    word-break: break-all;
+  }
+
+  .param-value {
+    color: #CE9178;
+    font-size: 11px;
+    word-break: break-all;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-style: italic;
+  }
+
+
+
+  .compressed-text {
+    background-color: #1E1E1E;
+    color: #888;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    overflow-x: auto;
+    text-align: left;
+  }
+
+  .html-iframe {
+    width: 100%;
+    height: 400px;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    background-color: white;
+  }
+
+  .image-container {
+    text-align: center;
+    background-color: #1E1E1E;
+    padding: 12px;
+    border-radius: 4px;
+  }
+
+  .response-image {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .error-message {
+    color: #FF6B6B;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+  }
+</style>
