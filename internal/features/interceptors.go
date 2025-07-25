@@ -123,7 +123,6 @@ func (si *ScriptInterceptor) InterceptRequest(flow *proxycore.Flow, w http.Respo
 		return false, err
 	}
 
-	flow.AddTag("script-processed")
 	return false, nil // 继续处理请求
 }
 
@@ -134,6 +133,5 @@ func (si *ScriptInterceptor) InterceptResponse(flow *proxycore.Flow, resp *http.
 		return resp, err
 	}
 
-	flow.AddTag("script-processed")
 	return resp, nil
 }

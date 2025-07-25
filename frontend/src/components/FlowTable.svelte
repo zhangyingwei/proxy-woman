@@ -86,6 +86,20 @@
     return `${(ms / 1000).toFixed(1)}s`;
   }
 
+  // 获取标签显示名称
+  function getTagDisplayName(tag: string): string {
+    const tagMap: Record<string, string> = {
+      'script-processed': '🔧 脚本',
+      'breakpoint-request': '🚨 断点请求',
+      'breakpoint-response': '🚨 断点响应',
+      'map-local': '📁 本地映射',
+      'upstream-proxy': '🔄 上游代理',
+      'blocked': '🚫 已阻止',
+      'allowed': '✅ 已允许'
+    };
+    return tagMap[tag] || tag;
+  }
+
   // 处理行点击
   function handleRowClick(flow: Flow) {
     selectionActions.selectFlow(flow);
@@ -191,6 +205,7 @@
         <th class="status-code-col">状态码</th>
         <th class="size-col">大小</th>
         <th class="duration-col">时长</th>
+        <th class="tags-col">标签</th>
       </tr>
     </thead>
     <tbody>
@@ -240,6 +255,15 @@
           </td>
           <td class="duration-col">
             {formatDuration(flow.duration)}
+          </td>
+          <td class="tags-col">
+            <div class="flow-tags">
+              {#if flow.tags && flow.tags.length > 0}
+                {#each flow.tags as tag}
+                  <span class="tag tag-{tag.replace('-', '_')}">{getTagDisplayName(tag)}</span>
+                {/each}
+              {/if}
+            </div>
           </td>
         </tr>
       {/each}
@@ -543,6 +567,66 @@
   .duration-col {
     width: 80px;
     text-align: right;
+  }
+
+  .tags-col {
+    width: 120px;
+    text-align: left;
+  }
+
+  .flow-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tag-script_processed {
+    background: #1E3A5F;
+    color: #87CEEB;
+    border: 1px solid #007ACC;
+  }
+
+  .tag-breakpoint_request,
+  .tag-breakpoint_response {
+    background: #5F1E1E;
+    color: #FFB6C1;
+    border: 1px solid #FF6B6B;
+  }
+
+  .tag-map_local {
+    background: #3E5F1E;
+    color: #98FB98;
+    border: 1px solid #32CD32;
+  }
+
+  .tag-upstream_proxy {
+    background: #5F3E1E;
+    color: #DEB887;
+    border: 1px solid #CD853F;
+  }
+
+  .tag-blocked {
+    background: #5F1E1E;
+    color: #FFB6C1;
+    border: 1px solid #FF6B6B;
+  }
+
+  .tag-allowed {
+    background: #1E5F1E;
+    color: #90EE90;
+    border: 1px solid #32CD32;
   }
 
   .status-dot {

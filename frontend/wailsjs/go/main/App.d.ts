@@ -94,11 +94,15 @@ export function TestUpstreamProxy(arg1:string):Promise<void>;
 
 export function UpdateAllowBlockRule(arg1:features.AllowBlockRule):Promise<void>;
 
+export function UpdateBreakpointRuleStatus(arg1:string,arg2:boolean):Promise<void>;
+
 export function UpdateMapLocalRule(arg1:features.MapLocalRule):Promise<void>;
 
 export function UpdateReverseProxyRule(arg1:features.ReverseProxyRule):Promise<void>;
 
 export function UpdateScript(arg1:features.Script):Promise<void>;
+
+export function UpdateScriptStatus(arg1:string,arg2:boolean):Promise<void>;
 
 export function UpdateUpstreamProxy(arg1:features.UpstreamProxy):Promise<void>;
 

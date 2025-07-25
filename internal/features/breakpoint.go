@@ -36,6 +36,14 @@ type BreakpointSession struct {
 	ModifiedResponse *http.Response    `json:"-"`
 }
 
+// BreakpointStorage 断点存储接口
+type BreakpointStorage interface {
+	SaveBreakpointRule(rule *BreakpointRule) error
+	GetBreakpointRules() ([]*BreakpointRule, error)
+	DeleteBreakpointRule(id string) error
+	UpdateBreakpointRuleStatus(id string, enabled bool) error
+}
+
 // BreakpointManager 断点管理器
 type BreakpointManager struct {
 	rules        map[string]*BreakpointRule
@@ -43,13 +51,40 @@ type BreakpointManager struct {
 	rulesMutex   sync.RWMutex
 	sessionsMutex sync.RWMutex
 	eventHandler func(session *BreakpointSession)
+	storage      BreakpointStorage
 }
 
 // NewBreakpointManager 创建新的断点管理器
-func NewBreakpointManager() *BreakpointManager {
-	return &BreakpointManager{
+func NewBreakpointManager(storage BreakpointStorage) *BreakpointManager {
+	manager := &BreakpointManager{
 		rules:    make(map[string]*BreakpointRule),
 		sessions: make(map[string]*BreakpointSession),
+		storage:  storage,
+	}
+
+	// 从数据库加载规则
+	manager.loadRulesFromStorage()
+
+	return manager
+}
+
+// loadRulesFromStorage 从存储加载规则
+func (bm *BreakpointManager) loadRulesFromStorage() {
+	if bm.storage == nil {
+		return
+	}
+
+	rules, err := bm.storage.GetBreakpointRules()
+	if err != nil {
+		fmt.Printf("Failed to load breakpoint rules from storage: %v\n", err)
+		return
+	}
+
+	bm.rulesMutex.Lock()
+	defer bm.rulesMutex.Unlock()
+
+	for _, rule := range rules {
+		bm.rules[rule.ID] = rule
 	}
 }
 
@@ -59,17 +94,56 @@ func (bm *BreakpointManager) SetEventHandler(handler func(session *BreakpointSes
 }
 
 // AddRule 添加断点规则
-func (bm *BreakpointManager) AddRule(rule *BreakpointRule) {
+func (bm *BreakpointManager) AddRule(rule *BreakpointRule) error {
 	bm.rulesMutex.Lock()
 	defer bm.rulesMutex.Unlock()
+
+	// 保存到数据库
+	if bm.storage != nil {
+		if err := bm.storage.SaveBreakpointRule(rule); err != nil {
+			return fmt.Errorf("failed to save breakpoint rule: %v", err)
+		}
+	}
+
 	bm.rules[rule.ID] = rule
+	return nil
 }
 
 // RemoveRule 移除断点规则
-func (bm *BreakpointManager) RemoveRule(ruleID string) {
+func (bm *BreakpointManager) RemoveRule(ruleID string) error {
 	bm.rulesMutex.Lock()
 	defer bm.rulesMutex.Unlock()
+
+	// 从数据库删除
+	if bm.storage != nil {
+		if err := bm.storage.DeleteBreakpointRule(ruleID); err != nil {
+			return fmt.Errorf("failed to delete breakpoint rule: %v", err)
+		}
+	}
+
 	delete(bm.rules, ruleID)
+	return nil
+}
+
+// UpdateRuleStatus 更新断点规则状态
+func (bm *BreakpointManager) UpdateRuleStatus(ruleID string, enabled bool) error {
+	bm.rulesMutex.Lock()
+	defer bm.rulesMutex.Unlock()
+
+	rule, exists := bm.rules[ruleID]
+	if !exists {
+		return fmt.Errorf("breakpoint rule not found: %s", ruleID)
+	}
+
+	// 更新数据库
+	if bm.storage != nil {
+		if err := bm.storage.UpdateBreakpointRuleStatus(ruleID, enabled); err != nil {
+			return fmt.Errorf("failed to update breakpoint rule status: %v", err)
+		}
+	}
+
+	rule.Enabled = enabled
+	return nil
 }
 
 // GetAllRules 获取所有断点规则

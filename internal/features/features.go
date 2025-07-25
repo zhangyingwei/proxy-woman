@@ -16,13 +16,19 @@ type FeatureManager struct {
 	Upstream     *UpstreamManager
 }
 
+// DatabaseStorage 数据库存储接口
+type DatabaseStorage interface {
+	BreakpointStorage
+	ScriptStorage
+}
+
 // NewFeatureManager 创建新的功能管理器
-func NewFeatureManager() *FeatureManager {
+func NewFeatureManager(storage DatabaseStorage) *FeatureManager {
 	return &FeatureManager{
 		MapLocal:     NewMapLocalManager(),
-		Breakpoint:   NewBreakpointManager(),
+		Breakpoint:   NewBreakpointManager(storage),
 		Replay:       NewReplayManager(),
-		Scripting:    NewScriptManager(),
+		Scripting:    NewScriptManager(storage),
 		AllowBlock:   NewAllowBlockManager(),
 		HAR:          NewHARManager(),
 		ReverseProxy: NewReverseProxyManager(),

@@ -1,8 +1,12 @@
 <script lang="ts">
   import { proxyRunning, proxyPort } from '../stores/proxyStore';
   import { proxyService } from '../services/ProxyService';
+  import BreakpointManager from './BreakpointManager.svelte';
+  import ScriptManager from './ScriptManager.svelte';
 
   let isLoading = false;
+  let showBreakpointDialog = false;
+  let showScriptDialog = false;
 
   // 切换代理状态
   async function toggleProxy() {
@@ -113,16 +117,34 @@
   </div>
 
   <div class="toolbar-section">
-    <button 
-      class="toolbar-button" 
+    <button
+      class="toolbar-button"
+      on:click={() => showBreakpointDialog = true}
+      disabled={isLoading}
+      title="断点管理"
+    >
+      🔍 断点
+    </button>
+
+    <button
+      class="toolbar-button"
+      on:click={() => showScriptDialog = true}
+      disabled={isLoading}
+      title="脚本管理"
+    >
+      📜 脚本
+    </button>
+
+    <button
+      class="toolbar-button"
       on:click={clearFlows}
       disabled={isLoading}
     >
       清空
     </button>
 
-    <button 
-      class="toolbar-button" 
+    <button
+      class="toolbar-button"
       on:click={showCACert}
       disabled={isLoading}
     >
@@ -130,6 +152,36 @@
     </button>
   </div>
 </div>
+
+<!-- 断点管理弹窗 -->
+{#if showBreakpointDialog}
+  <div class="dialog-overlay">
+    <div class="dialog-container">
+      <div class="dialog-header">
+        <h3>断点管理</h3>
+        <button class="close-btn" on:click={() => showBreakpointDialog = false}>✕</button>
+      </div>
+      <div class="dialog-content">
+        <BreakpointManager />
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 脚本管理弹窗 -->
+{#if showScriptDialog}
+  <div class="dialog-overlay">
+    <div class="dialog-container">
+      <div class="dialog-header">
+        <h3>脚本管理</h3>
+        <button class="close-btn" on:click={() => showScriptDialog = false}>✕</button>
+      </div>
+      <div class="dialog-content">
+        <ScriptManager />
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .toolbar {
@@ -232,5 +284,69 @@
 
   .proxy-status.running {
     color: #3D9A50;
+  }
+
+  /* 弹窗样式 */
+  .dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .dialog-container {
+    background: #1E1E1E;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+    width: 85vw;
+    height: 75vh;
+    max-width: 1000px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #3E3E42;
+    background: #2D2D30;
+  }
+
+  .dialog-header h3 {
+    margin: 0;
+    color: #E0E0E0;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+    color: #AAAAAA;
+  }
+
+  .close-btn:hover {
+    background: #3E3E42;
+    color: #E0E0E0;
+  }
+
+  .dialog-content {
+    flex: 1;
+    overflow: hidden;
   }
 </style>

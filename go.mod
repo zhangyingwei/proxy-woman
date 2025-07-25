@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
+	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/wailsapp/wails/v2 v2.10.1
 )
 

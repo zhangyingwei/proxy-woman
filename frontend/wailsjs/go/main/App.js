@@ -182,6 +182,10 @@ export function UpdateAllowBlockRule(arg1) {
   return window['go']['main']['App']['UpdateAllowBlockRule'](arg1);
 }
 
+export function UpdateBreakpointRuleStatus(arg1, arg2) {
+  return window['go']['main']['App']['UpdateBreakpointRuleStatus'](arg1, arg2);
+}
+
 export function UpdateMapLocalRule(arg1) {
   return window['go']['main']['App']['UpdateMapLocalRule'](arg1);
 }
@@ -192,6 +196,10 @@ export function UpdateReverseProxyRule(arg1) {
 
 export function UpdateScript(arg1) {
   return window['go']['main']['App']['UpdateScript'](arg1);
+}
+
+export function UpdateScriptStatus(arg1, arg2) {
+  return window['go']['main']['App']['UpdateScriptStatus'](arg1, arg2);
 }
 
 export function UpdateUpstreamProxy(arg1) {

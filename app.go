@@ -10,6 +10,7 @@ import (
 	"ProxyWoman/internal/features"
 	"ProxyWoman/internal/logger"
 	"ProxyWoman/internal/proxycore"
+	"ProxyWoman/internal/storage"
 	"ProxyWoman/internal/system"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -24,6 +25,7 @@ type App struct {
 	systemManager  *system.SystemManager
 	featureManager *features.FeatureManager
 	exportService  *export.ExportService
+	database       *storage.Database
 	isRunning      bool
 }
 
@@ -44,8 +46,15 @@ func NewApp() *App {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
 	}
 
+	// 初始化数据库
+	database, err := storage.NewDatabase()
+	if err != nil {
+		fmt.Printf("Failed to initialize database: %v\n", err)
+		// 继续运行，但功能会受限
+	}
+
 	certManager := certmanager.NewCertManager(cfg.ConfigDir)
-	featureManager := features.NewFeatureManager()
+	featureManager := features.NewFeatureManager(database)
 	exportService := export.NewExportService()
 
 	app := &App{
@@ -54,6 +63,7 @@ func NewApp() *App {
 		systemManager:  systemManager,
 		featureManager: featureManager,
 		exportService:  exportService,
+		database:       database,
 		isRunning:      false,
 	}
 
@@ -242,13 +252,18 @@ func (a *App) UpdateMapLocalRule(rule *features.MapLocalRule) error {
 // 断点相关方法
 
 // AddBreakpointRule 添加断点规则
-func (a *App) AddBreakpointRule(rule *features.BreakpointRule) {
-	a.featureManager.Breakpoint.AddRule(rule)
+func (a *App) AddBreakpointRule(rule *features.BreakpointRule) error {
+	return a.featureManager.Breakpoint.AddRule(rule)
 }
 
 // RemoveBreakpointRule 移除断点规则
-func (a *App) RemoveBreakpointRule(ruleID string) {
-	a.featureManager.Breakpoint.RemoveRule(ruleID)
+func (a *App) RemoveBreakpointRule(ruleID string) error {
+	return a.featureManager.Breakpoint.RemoveRule(ruleID)
+}
+
+// UpdateBreakpointRuleStatus 更新断点规则状态
+func (a *App) UpdateBreakpointRuleStatus(ruleID string, enabled bool) error {
+	return a.featureManager.Breakpoint.UpdateRuleStatus(ruleID, enabled)
 }
 
 // GetBreakpointRules 获取所有断点规则
@@ -299,18 +314,23 @@ func (a *App) ModifyAndReplayFlow(flowID string, modifications map[string]interf
 // 脚本相关方法
 
 // AddScript 添加脚本
-func (a *App) AddScript(script *features.Script) {
-	a.featureManager.Scripting.AddScript(script)
+func (a *App) AddScript(script *features.Script) error {
+	return a.featureManager.Scripting.AddScript(script)
 }
 
 // RemoveScript 移除脚本
-func (a *App) RemoveScript(scriptID string) {
-	a.featureManager.Scripting.RemoveScript(scriptID)
+func (a *App) RemoveScript(scriptID string) error {
+	return a.featureManager.Scripting.RemoveScript(scriptID)
 }
 
 // UpdateScript 更新脚本
 func (a *App) UpdateScript(script *features.Script) error {
 	return a.featureManager.Scripting.UpdateScript(script)
+}
+
+// UpdateScriptStatus 更新脚本状态
+func (a *App) UpdateScriptStatus(scriptID string, enabled bool) error {
+	return a.featureManager.Scripting.UpdateScriptStatus(scriptID, enabled)
 }
 
 // GetAllScripts 获取所有脚本

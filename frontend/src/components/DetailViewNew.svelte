@@ -398,6 +398,32 @@
 
 <div class="detail-view">
   {#if $selectedFlow}
+    <!-- 请求信息头部 -->
+    <div class="request-info-header">
+      <div class="request-basic-info">
+        <span class="request-method" class:get={$selectedFlow.method === 'GET'}
+              class:post={$selectedFlow.method === 'POST'}
+              class:put={$selectedFlow.method === 'PUT'}
+              class:delete={$selectedFlow.method === 'DELETE'}>
+          {$selectedFlow.method}
+        </span>
+        <span class="request-url" title={$selectedFlow.url}>
+          {$selectedFlow.url}
+        </span>
+      </div>
+      <div class="request-meta-info">
+        <span class="status-code" class:success={$selectedFlow.statusCode >= 200 && $selectedFlow.statusCode < 300}
+              class:redirect={$selectedFlow.statusCode >= 300 && $selectedFlow.statusCode < 400}
+              class:error={$selectedFlow.statusCode >= 400}>
+          {$selectedFlow.statusCode}
+        </span>
+        <span class="content-type">{$selectedFlow.contentType || 'unknown'}</span>
+        <span class="request-size">{$selectedFlow.requestSize || 0}B</span>
+        <span class="response-size">{$selectedFlow.responseSize || 0}B</span>
+        <span class="duration">{$selectedFlow.duration || '0ms'}</span>
+      </div>
+    </div>
+
     <div class="panels-container">
       <!-- 左侧：请求面板 -->
       <div class="request-panel">
@@ -891,5 +917,130 @@
     text-align: center;
     padding: 20px;
     font-style: italic;
+  }
+
+  /* 请求信息头部样式 */
+  .request-info-header {
+    background: #1E1E1E;
+    border-bottom: 1px solid #3E3E42;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .request-basic-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .request-method {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: #6C757D;
+    color: white;
+    min-width: 45px;
+    text-align: center;
+  }
+
+  .request-method.get {
+    background: #28A745;
+  }
+
+  .request-method.post {
+    background: #007BFF;
+  }
+
+  .request-method.put {
+    background: #FFC107;
+    color: #000;
+  }
+
+  .request-method.delete {
+    background: #DC3545;
+  }
+
+  .request-url {
+    color: #E0E0E0;
+    font-size: 13px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .request-meta-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .status-code {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #6C757D;
+    color: white;
+    min-width: 35px;
+    text-align: center;
+  }
+
+  .status-code.success {
+    background: #28A745;
+  }
+
+  .status-code.redirect {
+    background: #FFC107;
+    color: #000;
+  }
+
+  .status-code.error {
+    background: #DC3545;
+  }
+
+  .content-type,
+  .request-size,
+  .response-size,
+  .duration {
+    font-size: 11px;
+    color: #AAAAAA;
+    padding: 2px 6px;
+    background: #2D2D30;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  .content-type {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 768px) {
+    .request-info-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .request-basic-info,
+    .request-meta-info {
+      justify-content: flex-start;
+    }
+
+    .request-url {
+      font-size: 12px;
+    }
   }
 </style>

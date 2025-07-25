@@ -120,6 +120,8 @@
     overflow: hidden;
   }
 
+
+
   .right-panel {
     flex: 1;
     display: flex;

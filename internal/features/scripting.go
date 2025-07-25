@@ -61,49 +61,132 @@ func (sc *ScriptConsole) GetLogs() []string {
 	return sc.logs
 }
 
+// ScriptStorage 脚本存储接口
+type ScriptStorage interface {
+	SaveScript(script *Script) error
+	GetScripts() ([]*Script, error)
+	DeleteScript(id string) error
+	UpdateScriptStatus(id string, enabled bool) error
+}
+
 // ScriptManager 脚本管理器
 type ScriptManager struct {
 	scripts     map[string]*Script
 	scriptsMutex sync.RWMutex
 	vm          *goja.Runtime
+	storage     ScriptStorage
 }
 
 // NewScriptManager 创建脚本管理器
-func NewScriptManager() *ScriptManager {
-	return &ScriptManager{
+func NewScriptManager(storage ScriptStorage) *ScriptManager {
+	manager := &ScriptManager{
 		scripts: make(map[string]*Script),
 		vm:      goja.New(),
+		storage: storage,
+	}
+
+	// 从数据库加载脚本
+	manager.loadScriptsFromStorage()
+
+	return manager
+}
+
+// loadScriptsFromStorage 从存储加载脚本
+func (sm *ScriptManager) loadScriptsFromStorage() {
+	if sm.storage == nil {
+		return
+	}
+
+	scripts, err := sm.storage.GetScripts()
+	if err != nil {
+		fmt.Printf("Failed to load scripts from storage: %v\n", err)
+		return
+	}
+
+	sm.scriptsMutex.Lock()
+	defer sm.scriptsMutex.Unlock()
+
+	for _, script := range scripts {
+		sm.scripts[script.ID] = script
 	}
 }
 
 // AddScript 添加脚本
-func (sm *ScriptManager) AddScript(script *Script) {
+func (sm *ScriptManager) AddScript(script *Script) error {
 	sm.scriptsMutex.Lock()
 	defer sm.scriptsMutex.Unlock()
-	
+
 	script.CreatedAt = time.Now()
 	script.UpdatedAt = time.Now()
+
+	// 保存到数据库
+	if sm.storage != nil {
+		if err := sm.storage.SaveScript(script); err != nil {
+			return fmt.Errorf("failed to save script: %v", err)
+		}
+	}
+
 	sm.scripts[script.ID] = script
+	return nil
 }
 
 // RemoveScript 移除脚本
-func (sm *ScriptManager) RemoveScript(scriptID string) {
+func (sm *ScriptManager) RemoveScript(scriptID string) error {
 	sm.scriptsMutex.Lock()
 	defer sm.scriptsMutex.Unlock()
+
+	// 从数据库删除
+	if sm.storage != nil {
+		if err := sm.storage.DeleteScript(scriptID); err != nil {
+			return fmt.Errorf("failed to delete script: %v", err)
+		}
+	}
+
 	delete(sm.scripts, scriptID)
+	return nil
 }
 
 // UpdateScript 更新脚本
 func (sm *ScriptManager) UpdateScript(script *Script) error {
 	sm.scriptsMutex.Lock()
 	defer sm.scriptsMutex.Unlock()
-	
+
 	if _, exists := sm.scripts[script.ID]; !exists {
 		return fmt.Errorf("script not found: %s", script.ID)
 	}
-	
+
 	script.UpdatedAt = time.Now()
+
+	// 保存到数据库
+	if sm.storage != nil {
+		if err := sm.storage.SaveScript(script); err != nil {
+			return fmt.Errorf("failed to update script: %v", err)
+		}
+	}
+
 	sm.scripts[script.ID] = script
+	return nil
+}
+
+// UpdateScriptStatus 更新脚本状态
+func (sm *ScriptManager) UpdateScriptStatus(scriptID string, enabled bool) error {
+	sm.scriptsMutex.Lock()
+	defer sm.scriptsMutex.Unlock()
+
+	script, exists := sm.scripts[scriptID]
+	if !exists {
+		return fmt.Errorf("script not found: %s", scriptID)
+	}
+
+	// 更新数据库
+	if sm.storage != nil {
+		if err := sm.storage.UpdateScriptStatus(scriptID, enabled); err != nil {
+			return fmt.Errorf("failed to update script status: %v", err)
+		}
+	}
+
+	script.Enabled = enabled
+	script.UpdatedAt = time.Now()
 	return nil
 }
 
@@ -131,23 +214,51 @@ func (sm *ScriptManager) GetAllScripts() []*Script {
 func (sm *ScriptManager) ExecuteRequestScripts(flow *proxycore.Flow) error {
 	sm.scriptsMutex.RLock()
 	defer sm.scriptsMutex.RUnlock()
-	
+
+	fmt.Printf("ExecuteRequestScripts: Found %d scripts\n", len(sm.scripts))
+	executed := false
 	for _, script := range sm.scripts {
 		if !script.Enabled {
+			fmt.Printf("Script '%s' is disabled, skipping\n", script.Name)
 			continue
 		}
-		
+
 		if script.Type != "request" && script.Type != "both" {
+			fmt.Printf("Script '%s' type '%s' not applicable for request phase\n", script.Name, script.Type)
 			continue
 		}
-		
+
+		fmt.Printf("Executing request script: %s\n", script.Name)
 		err := sm.executeScript(script, flow, "request")
 		if err != nil {
 			// 记录错误但继续执行其他脚本
 			fmt.Printf("Script execution error (%s): %v\n", script.Name, err)
+		} else {
+			fmt.Printf("Script '%s' executed successfully\n", script.Name)
+			executed = true
 		}
 	}
-	
+
+	// 只有在实际执行了脚本时才添加标签
+	if executed {
+		if flow.Tags == nil {
+			flow.Tags = make([]string, 0)
+		}
+
+		// 检查是否已经有脚本标签，避免重复添加
+		hasScriptTag := false
+		for _, tag := range flow.Tags {
+			if tag == "script-processed" {
+				hasScriptTag = true
+				break
+			}
+		}
+
+		if !hasScriptTag {
+			flow.Tags = append(flow.Tags, "script-processed")
+		}
+	}
+
 	return nil
 }
 
@@ -155,23 +266,46 @@ func (sm *ScriptManager) ExecuteRequestScripts(flow *proxycore.Flow) error {
 func (sm *ScriptManager) ExecuteResponseScripts(flow *proxycore.Flow) error {
 	sm.scriptsMutex.RLock()
 	defer sm.scriptsMutex.RUnlock()
-	
+
+	executed := false
 	for _, script := range sm.scripts {
 		if !script.Enabled {
 			continue
 		}
-		
+
 		if script.Type != "response" && script.Type != "both" {
 			continue
 		}
-		
+
 		err := sm.executeScript(script, flow, "response")
 		if err != nil {
 			// 记录错误但继续执行其他脚本
 			fmt.Printf("Script execution error (%s): %v\n", script.Name, err)
+		} else {
+			executed = true
 		}
 	}
-	
+
+	// 只有在实际执行了脚本时才添加标签
+	if executed {
+		if flow.Tags == nil {
+			flow.Tags = make([]string, 0)
+		}
+
+		// 检查是否已经有脚本标签，避免重复添加
+		hasScriptTag := false
+		for _, tag := range flow.Tags {
+			if tag == "script-processed" {
+				hasScriptTag = true
+				break
+			}
+		}
+
+		if !hasScriptTag {
+			flow.Tags = append(flow.Tags, "script-processed")
+		}
+	}
+
 	return nil
 }
 
@@ -255,7 +389,7 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 			}
 		}
 	}
-	
+
 	return nil
 }
 

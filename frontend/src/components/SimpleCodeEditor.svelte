@@ -6,6 +6,9 @@
   export let readOnly: boolean = true;
   export let height: string = '300px';
 
+  import { createEventDispatcher } from 'svelte';
+  const dispatch = createEventDispatcher();
+
   let container: HTMLDivElement;
 
   // 语言到高亮类的映射
@@ -99,15 +102,26 @@
   }
 </script>
 
-<div 
-  bind:this={container} 
-  class="code-editor"
-  style="height: {height};"
->
-  {#if !value}
-    <div class="empty-state">无内容</div>
-  {/if}
-</div>
+{#if readOnly}
+  <div
+    bind:this={container}
+    class="code-editor"
+    style="height: {height};"
+  >
+    {#if !value}
+      <div class="empty-state">无内容</div>
+    {/if}
+  </div>
+{:else}
+  <div class="code-editor-wrapper" style="height: {height};">
+    <textarea
+      bind:value
+      class="code-textarea"
+      placeholder="请输入代码..."
+      on:input={() => dispatch('change', value)}
+    ></textarea>
+  </div>
+{/if}
 
 <style>
   .code-editor {
@@ -127,6 +141,9 @@
     color: #d4d4d4;
     white-space: pre-wrap;
     word-wrap: break-word;
+    text-align: left;
+    display: block;
+    width: 100%;
   }
 
   .code-editor :global(code) {
@@ -140,6 +157,8 @@
     padding: 12px;
     color: #888;
     font-style: italic;
+    text-align: left;
+    width: 100%;
   }
 
   /* JSON语法高亮 */
@@ -185,5 +204,38 @@
 
   .code-editor::-webkit-scrollbar-thumb:hover {
     background: #555;
+  }
+
+  /* 可编辑模式样式 */
+  .code-editor-wrapper {
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .code-textarea {
+    width: 100%;
+    height: 100%;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    padding: 12px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    resize: none;
+    outline: none;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+  }
+
+  .code-textarea:focus {
+    border: none;
+    outline: none;
+  }
+
+  .code-textarea::placeholder {
+    color: #888;
   }
 </style>
