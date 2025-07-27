@@ -5,27 +5,39 @@ import (
 	"time"
 )
 
+// ScriptExecution 脚本执行记录
+type ScriptExecution struct {
+	ScriptID    string    `json:"scriptId"`
+	ScriptName  string    `json:"scriptName"`
+	Phase       string    `json:"phase"` // "request" or "response"
+	Success     bool      `json:"success"`
+	Error       string    `json:"error,omitempty"`
+	Logs        []string  `json:"logs"`
+	ExecutedAt  time.Time `json:"executedAt"`
+}
+
 // Flow 表示一个完整的HTTP请求/响应流
 type Flow struct {
-	ID           string            `json:"id"`
-	URL          string            `json:"url"`
-	Method       string            `json:"method"`
-	StatusCode   int               `json:"statusCode"`
-	Client       string            `json:"client"`
-	Domain       string            `json:"domain"`
-	Path         string            `json:"path"`
-	Scheme       string            `json:"scheme"`
-	StartTime    time.Time         `json:"startTime"`
-	EndTime      time.Time         `json:"endTime"`
-	Duration     time.Duration     `json:"duration"`
-	RequestSize  int64             `json:"requestSize"`
-	ResponseSize int64             `json:"responseSize"`
-	Request      *FlowRequest      `json:"request"`
-	Response     *FlowResponse     `json:"response"`
-	IsPinned     bool              `json:"isPinned"`
-	IsBlocked    bool              `json:"isBlocked"`
-	ContentType  string            `json:"contentType"`
-	Tags         []string          `json:"tags"`
+	ID               string             `json:"id"`
+	URL              string             `json:"url"`
+	Method           string             `json:"method"`
+	StatusCode       int                `json:"statusCode"`
+	Client           string             `json:"client"`
+	Domain           string             `json:"domain"`
+	Path             string             `json:"path"`
+	Scheme           string             `json:"scheme"`
+	StartTime        time.Time          `json:"startTime"`
+	EndTime          time.Time          `json:"endTime"`
+	Duration         time.Duration      `json:"duration"`
+	RequestSize      int64              `json:"requestSize"`
+	ResponseSize     int64              `json:"responseSize"`
+	Request          *FlowRequest       `json:"request"`
+	Response         *FlowResponse      `json:"response"`
+	IsPinned         bool               `json:"isPinned"`
+	IsBlocked        bool               `json:"isBlocked"`
+	ContentType      string             `json:"contentType"`
+	Tags             []string           `json:"tags"`
+	ScriptExecutions []ScriptExecution  `json:"scriptExecutions,omitempty"`
 }
 
 // FlowRequest 表示HTTP请求

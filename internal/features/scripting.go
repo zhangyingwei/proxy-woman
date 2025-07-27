@@ -229,14 +229,30 @@ func (sm *ScriptManager) ExecuteRequestScripts(flow *proxycore.Flow) error {
 		}
 
 		fmt.Printf("Executing request script: %s\n", script.Name)
-		err := sm.executeScript(script, flow, "request")
+		logs, err := sm.executeScript(script, flow, "request")
+
+		// 记录脚本执行信息到Flow
+		execution := proxycore.ScriptExecution{
+			ScriptID:   script.ID,
+			ScriptName: script.Name,
+			Phase:      "request",
+			Success:    err == nil,
+			Logs:       logs,
+			ExecutedAt: time.Now(),
+		}
 		if err != nil {
-			// 记录错误但继续执行其他脚本
+			execution.Error = err.Error()
 			fmt.Printf("Script execution error (%s): %v\n", script.Name, err)
 		} else {
 			fmt.Printf("Script '%s' executed successfully\n", script.Name)
 			executed = true
 		}
+
+		// 添加执行记录到Flow
+		if flow.ScriptExecutions == nil {
+			flow.ScriptExecutions = make([]proxycore.ScriptExecution, 0)
+		}
+		flow.ScriptExecutions = append(flow.ScriptExecutions, execution)
 	}
 
 	// 只有在实际执行了脚本时才添加标签
@@ -277,13 +293,29 @@ func (sm *ScriptManager) ExecuteResponseScripts(flow *proxycore.Flow) error {
 			continue
 		}
 
-		err := sm.executeScript(script, flow, "response")
+		logs, err := sm.executeScript(script, flow, "response")
+
+		// 记录脚本执行信息到Flow
+		execution := proxycore.ScriptExecution{
+			ScriptID:   script.ID,
+			ScriptName: script.Name,
+			Phase:      "response",
+			Success:    err == nil,
+			Logs:       logs,
+			ExecutedAt: time.Now(),
+		}
 		if err != nil {
-			// 记录错误但继续执行其他脚本
+			execution.Error = err.Error()
 			fmt.Printf("Script execution error (%s): %v\n", script.Name, err)
 		} else {
 			executed = true
 		}
+
+		// 添加执行记录到Flow
+		if flow.ScriptExecutions == nil {
+			flow.ScriptExecutions = make([]proxycore.ScriptExecution, 0)
+		}
+		flow.ScriptExecutions = append(flow.ScriptExecutions, execution)
 	}
 
 	// 只有在实际执行了脚本时才添加标签
@@ -310,7 +342,7 @@ func (sm *ScriptManager) ExecuteResponseScripts(flow *proxycore.Flow) error {
 }
 
 // executeScript 执行单个脚本
-func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, phase string) error {
+func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, phase string) ([]string, error) {
 	// 创建新的VM实例以避免状态污染
 	vm := goja.New()
 	
@@ -358,7 +390,7 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 	// 执行脚本
 	_, err := vm.RunString(script.Content)
 	if err != nil {
-		return fmt.Errorf("script execution failed: %v", err)
+		return console.GetLogs(), fmt.Errorf("script execution failed: %v", err)
 	}
 	
 	// 获取修改后的值并应用到Flow
@@ -390,7 +422,7 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 		}
 	}
 
-	return nil
+	return console.GetLogs(), nil
 }
 
 // ValidateScript 验证脚本语法

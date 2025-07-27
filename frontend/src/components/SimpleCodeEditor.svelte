@@ -23,22 +23,31 @@
 
   // 检测语言类型
   function detectLanguage(url: string, contentType: string, content: string): string {
+    // 如果明确指定了language参数，优先使用
+    if (language && language !== 'auto') {
+      return normalizeLanguage(language);
+    }
+
     // 根据Content-Type判断
     if (contentType) {
-      if (contentType.includes('json')) return 'json';
-      if (contentType.includes('javascript')) return 'javascript';
-      if (contentType.includes('html')) return 'html';
-      if (contentType.includes('css')) return 'css';
-      if (contentType.includes('xml')) return 'xml';
+      const lowerType = contentType.toLowerCase();
+      if (lowerType.includes('json') || lowerType.includes('application/json')) return 'json';
+      if (lowerType.includes('javascript') || lowerType.includes('application/javascript') ||
+          lowerType.includes('text/javascript') || lowerType.includes('application/x-javascript')) return 'javascript';
+      if (lowerType.includes('html') || lowerType.includes('text/html') ||
+          lowerType.includes('application/xhtml')) return 'html';
+      if (lowerType.includes('css') || lowerType.includes('text/css')) return 'css';
+      if (lowerType.includes('xml') || lowerType.includes('application/xml') ||
+          lowerType.includes('text/xml')) return 'xml';
     }
 
     // 根据URL扩展名判断
     const urlLower = url.toLowerCase();
-    if (urlLower.includes('.js') || urlLower.includes('.mjs')) return 'javascript';
+    if (urlLower.includes('.js') || urlLower.includes('.mjs') || urlLower.includes('.jsx')) return 'javascript';
     if (urlLower.includes('.json')) return 'json';
-    if (urlLower.includes('.css')) return 'css';
-    if (urlLower.includes('.html') || urlLower.includes('.htm')) return 'html';
-    if (urlLower.includes('.xml')) return 'xml';
+    if (urlLower.includes('.css') || urlLower.includes('.scss') || urlLower.includes('.sass') || urlLower.includes('.less')) return 'css';
+    if (urlLower.includes('.html') || urlLower.includes('.htm') || urlLower.includes('.xhtml')) return 'html';
+    if (urlLower.includes('.xml') || urlLower.includes('.xsl') || urlLower.includes('.xsd')) return 'xml';
 
     // 根据内容判断
     if (content) {
@@ -49,17 +58,48 @@
           return 'json';
         } catch {}
       }
-      if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) return 'html';
-      if (trimmed.startsWith('<?xml')) return 'xml';
+      if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') ||
+          trimmed.includes('<html>') || trimmed.includes('<HTML>')) return 'html';
+      if (trimmed.startsWith('<?xml') || trimmed.includes('<?xml')) return 'xml';
+
+      // CSS检测
+      if (trimmed.includes('{') && trimmed.includes('}') &&
+          (trimmed.includes(':') || trimmed.includes('@'))) {
+        // 简单的CSS检测：包含选择器和属性
+        if (/[a-zA-Z-]+\s*:\s*[^;]+;/.test(trimmed) ||
+            /@[a-zA-Z-]+/.test(trimmed) ||
+            /\.[a-zA-Z-]+\s*{/.test(trimmed)) {
+          return 'css';
+        }
+      }
+
+      // JavaScript检测
+      if (trimmed.includes('function') || trimmed.includes('var ') ||
+          trimmed.includes('let ') || trimmed.includes('const ') ||
+          trimmed.includes('=>') || trimmed.includes('console.') ||
+          trimmed.includes('document.') || trimmed.includes('window.')) {
+        return 'javascript';
+      }
     }
 
+    return 'text';
+  }
+
+  // 标准化语言名称
+  function normalizeLanguage(lang: string): string {
+    const lowerLang = lang.toLowerCase();
+    if (lowerLang.includes('json')) return 'json';
+    if (lowerLang.includes('javascript') || lowerLang.includes('js')) return 'javascript';
+    if (lowerLang.includes('html')) return 'html';
+    if (lowerLang.includes('css')) return 'css';
+    if (lowerLang.includes('xml')) return 'xml';
     return 'text';
   }
 
   // 简单的语法高亮
   function highlightCode(code: string, lang: string): string {
     if (!code) return '';
-    
+
     // 转义HTML字符
     const escaped = code
       .replace(/&/g, '&amp;')
@@ -79,25 +119,61 @@
     if (lang === 'html') {
       return escaped
         .replace(/(&lt;\/?[^&gt;]+&gt;)/g, '<span class="html-tag">$1</span>')
-        .replace(/(\w+)=/g, '<span class="html-attr">$1</span>=');
+        .replace(/(\w+)=/g, '<span class="html-attr">$1</span>=')
+        .replace(/=(".*?")/g, '=<span class="html-value">$1</span>');
+    }
+
+    if (lang === 'css') {
+      return escaped
+        .replace(/(\/\*.*?\*\/)/gs, '<span class="css-comment">$1</span>')
+        .replace(/([a-zA-Z-]+)\s*:/g, '<span class="css-property">$1</span>:')
+        .replace(/:\s*([^;]+);/g, ': <span class="css-value">$1</span>;')
+        .replace(/([.#]?[a-zA-Z-_][a-zA-Z0-9-_]*)\s*{/g, '<span class="css-selector">$1</span> {')
+        .replace(/(@[a-zA-Z-]+)/g, '<span class="css-at-rule">$1</span>');
+    }
+
+    if (lang === 'javascript') {
+      return escaped
+        .replace(/(\/\/.*$)/gm, '<span class="js-comment">$1</span>')
+        .replace(/(\/\*.*?\*\/)/gs, '<span class="js-comment">$1</span>')
+        .replace(/\b(function|var|let|const|if|else|for|while|return|true|false|null|undefined)\b/g, '<span class="js-keyword">$1</span>')
+        .replace(/\b(console|document|window|Array|Object|String|Number|Boolean)\b/g, '<span class="js-builtin">$1</span>')
+        .replace(/(".*?"|'.*?'|`.*?`)/g, '<span class="js-string">$1</span>')
+        .replace(/\b(\d+\.?\d*)\b/g, '<span class="js-number">$1</span>');
+    }
+
+    if (lang === 'xml') {
+      return escaped
+        .replace(/(&lt;\?.*?\?&gt;)/g, '<span class="xml-declaration">$1</span>')
+        .replace(/(&lt;!--.*?--&gt;)/gs, '<span class="xml-comment">$1</span>')
+        .replace(/(&lt;\/?[^&gt;]+&gt;)/g, '<span class="xml-tag">$1</span>')
+        .replace(/(\w+)=/g, '<span class="xml-attr">$1</span>=')
+        .replace(/=(".*?")/g, '=<span class="xml-value">$1</span>');
     }
 
     return escaped;
   }
 
   onMount(() => {
-    if (container && value) {
-      const detectedLang = detectLanguage('', '', value);
-      const highlighted = highlightCode(value, detectedLang);
-      
-      container.innerHTML = `<pre><code class="${languageMap[detectedLang] || 'language-text'}">${highlighted}</code></pre>`;
-    }
+    updateContent();
   });
 
   // 响应式更新内容
-  $: if (container && value) {
-    const detectedLang = detectLanguage('', '', value);
+  $: if (container) {
+    updateContent();
+  }
+
+  function updateContent() {
+    if (!container) return;
+
+    if (!value || value.length === 0) {
+      container.innerHTML = '<div class="empty-state">无内容</div>';
+      return;
+    }
+
+    const detectedLang = detectLanguage('', language || '', value);
     const highlighted = highlightCode(value, detectedLang);
+
     container.innerHTML = `<pre><code class="${languageMap[detectedLang] || 'language-text'}">${highlighted}</code></pre>`;
   }
 </script>
@@ -185,6 +261,76 @@
 
   .code-editor :global(.html-attr) {
     color: #9CDCFE;
+  }
+
+  .code-editor :global(.html-value) {
+    color: #CE9178;
+  }
+
+  /* CSS语法高亮 */
+  .code-editor :global(.css-selector) {
+    color: #D7BA7D;
+  }
+
+  .code-editor :global(.css-property) {
+    color: #9CDCFE;
+  }
+
+  .code-editor :global(.css-value) {
+    color: #CE9178;
+  }
+
+  .code-editor :global(.css-comment) {
+    color: #6A9955;
+    font-style: italic;
+  }
+
+  .code-editor :global(.css-at-rule) {
+    color: #C586C0;
+  }
+
+  /* JavaScript语法高亮 */
+  .code-editor :global(.js-keyword) {
+    color: #569CD6;
+  }
+
+  .code-editor :global(.js-string) {
+    color: #CE9178;
+  }
+
+  .code-editor :global(.js-number) {
+    color: #B5CEA8;
+  }
+
+  .code-editor :global(.js-comment) {
+    color: #6A9955;
+    font-style: italic;
+  }
+
+  .code-editor :global(.js-builtin) {
+    color: #4EC9B0;
+  }
+
+  /* XML语法高亮 */
+  .code-editor :global(.xml-tag) {
+    color: #569CD6;
+  }
+
+  .code-editor :global(.xml-attr) {
+    color: #9CDCFE;
+  }
+
+  .code-editor :global(.xml-value) {
+    color: #CE9178;
+  }
+
+  .code-editor :global(.xml-comment) {
+    color: #6A9955;
+    font-style: italic;
+  }
+
+  .code-editor :global(.xml-declaration) {
+    color: #C586C0;
   }
 
   /* 滚动条样式 */

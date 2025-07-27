@@ -52,6 +52,8 @@ export function GetPinnedFlows():Promise<Array<proxycore.Flow>>;
 
 export function GetProxyPort():Promise<number>;
 
+export function GetResponseHexView(arg1:string):Promise<string>;
+
 export function GetReverseProxyRules():Promise<Array<features.ReverseProxyRule>>;
 
 export function GetUpstreamProxies():Promise<Array<features.UpstreamProxy>>;

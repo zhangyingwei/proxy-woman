@@ -2,20 +2,13 @@
   import { selectedFlow } from '../stores/selectionStore';
   import JsonTreeView from './JsonTreeView.svelte';
   import SimpleCodeEditor from './SimpleCodeEditor.svelte';
-  import DecodingSelector from './DecodingSelector.svelte';
-  import { DecryptRequestBody, DecryptResponseBody } from '../../wailsjs/go/main/App';
+  import { DecryptRequestBody, DecryptResponseBody, GetResponseHexView } from '../../wailsjs/go/main/App';
 
   // 标签状态
   let activeRequestTab: 'headers' | 'payload' | 'debug' = 'headers';
   let activeResponseTab: 'headers' | 'payload' | 'debug' = 'headers';
 
-  // 解码状态
-  let requestDecodingMode: 'original' | 'auto' | 'manual' = 'auto';
-  let responseDecodingMode: 'original' | 'auto' | 'manual' = 'auto';
-  let requestDecodedContent: string = '';
-  let responseDecodedContent: string = '';
-  let requestDecodingMethod: string = '';
-  let responseDecodingMethod: string = '';
+
 
   const DEBUG_ENABLED = false;
 
@@ -128,6 +121,24 @@
     return contentType && contentType.startsWith('image/');
   }
 
+  // 检查是否为文本类型内容
+  function isTextType(contentType: string): boolean {
+    if (!contentType) return false;
+
+    const lowerType = contentType.toLowerCase();
+    return lowerType.includes('text/') ||
+           lowerType.includes('application/json') ||
+           lowerType.includes('application/javascript') ||
+           lowerType.includes('application/xml') ||
+           lowerType.includes('application/xhtml') ||
+           lowerType.includes('application/css') ||
+           lowerType.includes('text/css') ||
+           lowerType.includes('text/javascript') ||
+           lowerType.includes('text/html') ||
+           lowerType.includes('text/xml') ||
+           lowerType.includes('text/plain');
+  }
+
   // 检查是否可能是压缩/编码的文本内容
   function isCompressedText(bodyText: string, contentType: string, url: string = ''): boolean {
     const isTextType = contentType && (
@@ -191,21 +202,9 @@
     activeResponseTab = tab;
   }
 
-  // 处理请求解码变化
-  function handleRequestDecodingChange(event: CustomEvent) {
-    const { mode, content, method } = event.detail;
-    requestDecodingMode = mode;
-    requestDecodedContent = content;
-    requestDecodingMethod = method || '';
-  }
 
-  // 处理响应解码变化
-  function handleResponseDecodingChange(event: CustomEvent) {
-    const { mode, content, method } = event.detail;
-    responseDecodingMode = mode;
-    responseDecodedContent = content;
-    responseDecodingMethod = method || '';
-  }
+
+
 
   // 解密请求体
   async function decryptRequestBody(body: Uint8Array, headers: Record<string, string>): Promise<Uint8Array> {
@@ -394,6 +393,8 @@
     const displayContent = getDisplayContent(bodyText, contentType, url);
     return formatContent(displayContent, contentType, url);
   }
+
+
 </script>
 
 <div class="detail-view">
@@ -459,21 +460,7 @@
             {/if}
           </div>
 
-          <!-- 解码控制器 -->
-          {#if activeRequestTab === 'payload' && $selectedFlow.request?.body}
-            {@const bodyText = bytesToString($selectedFlow.request.body)}
-            {@const contentType = $selectedFlow.request?.headers?.['Content-Type'] || ''}
-            {@const url = $selectedFlow.url || ''}
-            <div class="decode-controls">
-              <DecodingSelector
-                content={bodyText}
-                contentType={contentType}
-                url={url}
-                currentMode={requestDecodingMode}
-                on:modeChange={handleRequestDecodingChange}
-              />
-            </div>
-          {/if}
+
         </div>
 
         <!-- 请求内容 -->
@@ -511,7 +498,7 @@
                 {@const bodyText = bytesToString($selectedFlow.request.body)}
                 {#if bodyText && bodyText.length > 0}
                   {@const contentType = $selectedFlow.request?.headers?.['Content-Type'] || ''}
-                  {@const displayContent = requestDecodedContent || bodyText}
+                  {@const displayContent = bodyText}
                   {@const formattedContent = formatContent(displayContent, contentType)}
 
                   <div class="body-section">
@@ -568,21 +555,7 @@
             {/if}
           </div>
 
-          <!-- 解码控制器 -->
-          {#if activeResponseTab === 'payload' && $selectedFlow.response?.body}
-            {@const bodyText = bytesToString($selectedFlow.response.body)}
-            {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
-            {@const url = $selectedFlow.url || ''}
-            <div class="decode-controls">
-              <DecodingSelector
-                content={bodyText}
-                contentType={contentType}
-                url={url}
-                currentMode={responseDecodingMode}
-                on:modeChange={handleResponseDecodingChange}
-              />
-            </div>
-          {/if}
+
         </div>
 
         <!-- 响应内容 -->
@@ -602,43 +575,74 @@
                 {@const bodyText = bytesToString($selectedFlow.response.body)}
                 {#if bodyText && bodyText.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
-                  {@const displayContent = responseDecodedContent || bodyText}
+                  {@const decodedBodyText = $selectedFlow.response.decodedBody ? bytesToString($selectedFlow.response.decodedBody) : bodyText}
+                  {@const isTextContent = isTextType(contentType)}
 
-                  {#if isImage(contentType)}
-                    <div class="image-preview">
-                      {#if bodyText}
-                        <div class="image-container">
-                          <img
-                            src="data:{contentType};base64,{bodyText}"
-                            alt="Response Image"
-                            class="response-image"
-                            on:error={(e) => {
-                              const encoded = safeBase64Encode(bodyText);
-                              if (encoded && encoded !== bodyText) {
-                                e.target.src = `data:${contentType};base64,${encoded}`;
-                              }
-                            }}
-                          />
+                  <!-- 原始内容标签 -->
+                  <div class="content-section">
+                    <h4 class="section-title">原始内容</h4>
+                    {#if isTextContent}
+                      <!-- 文本内容直接显示 -->
+                      {@const formattedContent = formatContent(decodedBodyText, contentType)}
+                      <SimpleCodeEditor
+                        value={formattedContent}
+                        language={contentType}
+                        height="400px"
+                      />
+                    {:else}
+                      <!-- 二进制内容显示16进制 -->
+                      {#if $selectedFlow.response.hexView}
+                        <div class="hex-view">
+                          <pre class="hex-content">{$selectedFlow.response.hexView}</pre>
                         </div>
                       {:else}
-                        <div class="error-message">无图片数据</div>
+                        <div class="binary-content">
+                          <div class="binary-info">
+                            <span class="content-type-label">二进制内容</span>
+                            <span class="content-size">{bodyText.length} 字节</span>
+                          </div>
+                          <div class="binary-placeholder">
+                            无法显示二进制内容的16进制视图
+                          </div>
+                        </div>
+                      {/if}
+                    {/if}
+                  </div>
+
+                  <!-- 预览标签 -->
+                  {#if isHTML(contentType) || isImage(contentType)}
+                    <div class="content-section">
+                      <h4 class="section-title">预览</h4>
+                      {#if isImage(contentType)}
+                        <div class="image-preview">
+                          {#if bodyText}
+                            <div class="image-container">
+                              <img
+                                src="data:{contentType};base64,{bodyText}"
+                                alt="Response Image"
+                                class="response-image"
+                                on:error={(e) => {
+                                  const encoded = safeBase64Encode(bodyText);
+                                  if (encoded && encoded !== bodyText) {
+                                    e.target.src = `data:${contentType};base64,${encoded}`;
+                                  }
+                                }}
+                              />
+                            </div>
+                          {:else}
+                            <div class="error-message">无图片数据</div>
+                          {/if}
+                        </div>
+                      {:else if isHTML(contentType)}
+                        <div class="html-preview">
+                          <iframe
+                            srcdoc={decodedBodyText}
+                            class="html-iframe"
+                            title="HTML Preview"
+                          ></iframe>
+                        </div>
                       {/if}
                     </div>
-                  {:else if isHTML(contentType)}
-                    <div class="html-preview">
-                      <iframe
-                        srcdoc={displayContent}
-                        class="html-iframe"
-                        title="HTML Preview"
-                      ></iframe>
-                    </div>
-                  {:else}
-                    {@const formattedContent = formatContent(displayContent, contentType)}
-                    <SimpleCodeEditor
-                      value={formattedContent}
-                      language={contentType}
-                      height="400px"
-                    />
                   {/if}
                 {:else}
                   <div class="empty-body">无响应数据</div>
@@ -711,11 +715,7 @@
     display: flex;
   }
 
-  .decode-controls {
-    display: flex;
-    align-items: center;
-    margin-right: 8px;
-  }
+
 
   .sub-tab-button {
     background: none;
@@ -839,6 +839,106 @@
     background-color: #2D2D30;
     border-radius: 4px;
     border-left: 3px solid #007ACC;
+  }
+
+  .content-section {
+    margin-bottom: 16px;
+  }
+
+  .hex-view {
+    padding: 16px;
+    background-color: #1E1E1E;
+    border-radius: 4px;
+    border: 1px solid #3E3E42;
+  }
+
+  .hex-content {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #D4D4D4;
+    margin: 0;
+    white-space: pre;
+    overflow: auto;
+    max-height: 400px;
+  }
+
+  .binary-content {
+    background-color: #1E1E1E;
+    border-radius: 4px;
+    border: 1px solid #3E3E42;
+    padding: 16px;
+  }
+
+  .binary-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .content-type-label {
+    padding: 4px 8px;
+    background-color: #FF6B6B;
+    color: white;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .content-size {
+    color: #888;
+    font-size: 11px;
+  }
+
+  .binary-placeholder {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .image-preview {
+    background-color: #1E1E1E;
+    border-radius: 4px;
+    border: 1px solid #3E3E42;
+    padding: 16px;
+  }
+
+  .image-container {
+    text-align: center;
+    background-color: #1E1E1E;
+    padding: 12px;
+    border-radius: 4px;
+  }
+
+  .response-image {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .html-preview {
+    background-color: #1E1E1E;
+    border-radius: 4px;
+    border: 1px solid #3E3E42;
+    padding: 16px;
+  }
+
+  .html-iframe {
+    width: 100%;
+    height: 400px;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    background-color: white;
+  }
+
+  .error-message {
+    color: #FF6B6B;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
   }
 
   .query-params-grid {

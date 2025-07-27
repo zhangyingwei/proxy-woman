@@ -40,7 +40,13 @@ export interface FlowResponse {
   statusCode: number;
   status: string;
   headers: Record<string, string>;
-  body: any; // 可能是 Uint8Array、number[]、string 或 base64 字符串
+  body: any; // 原始响应体
+  decodedBody: any; // 解码后的响应体
+  hexView: string; // 16进制视图
+  isText: boolean; // 是否为文本内容
+  isBinary: boolean; // 是否为二进制内容
+  contentType: string; // 内容类型
+  encoding: string; // 编码方式
   raw: string;
 }
 

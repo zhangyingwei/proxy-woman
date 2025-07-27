@@ -80,6 +80,16 @@
       <span class="menu-icon">☕</span>
       <span class="menu-text">复制为 Java HttpClient</span>
     </div>
+
+    <!-- 脚本相关菜单项 -->
+    {#if flow.scriptExecutions && flow.scriptExecutions.length > 0}
+      <div class="menu-separator"></div>
+
+      <div class="menu-item" on:click={() => handleMenuAction('view-script-logs')}>
+        <span class="menu-icon">📜</span>
+        <span class="menu-text">查看脚本执行日志</span>
+      </div>
+    {/if}
   </div>
 {/if}
 

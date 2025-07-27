@@ -6,10 +6,11 @@
   import { detectRequestType, getAllRequestTypes, type RequestType, type RequestTypeInfo } from '../utils/requestTypeUtils';
   import ContextMenu from './ContextMenu.svelte';
   import ExportDropdown from './ExportDropdown.svelte';
+  import ScriptLogViewer from './ScriptLogViewer.svelte';
   import { generateCode } from '../utils/codeGenerator';
 
   // 过滤状态
-  let selectedRequestTypes: Set<RequestType> = new Set();
+  let selectedRequestType: RequestType | null = null; // 改为单选
   let allRequestTypes = getAllRequestTypes();
   let searchText = '';
 
@@ -19,17 +20,21 @@
   let contextMenuY = 0;
   let contextMenuFlow: Flow | null = null;
 
+  // 脚本日志查看器状态
+  let scriptLogViewerVisible = false;
+  let scriptLogViewerFlow: Flow | null = null;
+
   // 响应式过滤流量
   $: filteredByType = $filteredFlows.filter(flow => {
     // 类型过滤
-    if (selectedRequestTypes.size > 0) {
+    if (selectedRequestType !== null) {
       const requestType = detectRequestType(
         flow.url,
         flow.contentType || flow.response?.headers?.['Content-Type'],
         flow.request?.headers
       );
 
-      if (!selectedRequestTypes.has(requestType)) {
+      if (requestType !== selectedRequestType) {
         return false;
       }
     }
@@ -46,20 +51,18 @@
     return true;
   });
 
-  // 切换请求类型过滤
+  // 切换请求类型过滤（单选模式）
   function toggleRequestType(type: RequestType) {
-    if (selectedRequestTypes.has(type)) {
-      selectedRequestTypes.delete(type);
+    if (selectedRequestType === type) {
+      selectedRequestType = null; // 取消选择
     } else {
-      selectedRequestTypes.add(type);
+      selectedRequestType = type; // 选择新类型
     }
-    selectedRequestTypes = new Set(selectedRequestTypes);
   }
 
   // 清除所有过滤
   function clearAllFilters() {
-    selectedRequestTypes.clear();
-    selectedRequestTypes = new Set();
+    selectedRequestType = null;
   }
 
   // 获取状态码对应的颜色
@@ -123,14 +126,26 @@
   // 处理右键菜单动作
   function handleContextMenuAction(event: CustomEvent) {
     const { action, flow } = event.detail;
-    const code = generateCode(action, flow);
 
-    // 复制到剪贴板
-    navigator.clipboard.writeText(code).then(() => {
-      console.log('已复制到剪贴板:', action);
-    }).catch(err => {
-      console.error('复制失败:', err);
-    });
+    if (action === 'view-script-logs') {
+      // 显示脚本日志查看器
+      scriptLogViewerFlow = flow;
+      scriptLogViewerVisible = true;
+    } else {
+      // 生成代码并复制到剪贴板
+      const code = generateCode(action, flow);
+      navigator.clipboard.writeText(code).then(() => {
+        console.log('已复制到剪贴板:', action);
+      }).catch(err => {
+        console.error('复制失败:', err);
+      });
+    }
+  }
+
+  // 关闭脚本日志查看器
+  function closeScriptLogViewer() {
+    scriptLogViewerVisible = false;
+    scriptLogViewerFlow = null;
   }
 
   // 切换钉住状态
@@ -176,7 +191,7 @@
           {#each allRequestTypes as typeInfo}
             <button
               class="filter-btn"
-              class:active={selectedRequestTypes.has(typeInfo.type)}
+              class:active={selectedRequestType === typeInfo.type}
               style="--type-color: {typeInfo.color}"
               on:click={() => toggleRequestType(typeInfo.type)}
             >
@@ -286,6 +301,12 @@
   bind:flow={contextMenuFlow}
   on:close={closeContextMenu}
   on:action={handleContextMenuAction}
+/>
+
+<ScriptLogViewer
+  bind:visible={scriptLogViewerVisible}
+  bind:flow={scriptLogViewerFlow}
+  on:close={closeScriptLogViewer}
 />
 
 <style>

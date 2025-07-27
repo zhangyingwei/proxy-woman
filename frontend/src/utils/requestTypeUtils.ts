@@ -73,54 +73,78 @@ export const REQUEST_TYPES: Record<RequestType, RequestTypeInfo> = {
 export function detectRequestType(url: string, contentType?: string, headers?: Record<string, string>): RequestType {
   const urlLower = url.toLowerCase();
   const contentTypeLower = contentType?.toLowerCase() || '';
-  
-  // 检查是否为XHR/Fetch请求
-  if (headers) {
-    const xRequestedWith = headers['X-Requested-With']?.toLowerCase();
-    const accept = headers['Accept']?.toLowerCase();
-    
-    if (xRequestedWith === 'xmlhttprequest' || 
-        accept?.includes('application/json') ||
-        accept?.includes('application/xml')) {
-      return 'fetch';
-    }
-  }
-  
-  // 根据Content-Type检测
+
+  // 优先根据Content-Type精确判断
   if (contentTypeLower) {
-    if (contentTypeLower.includes('text/html') || 
-        contentTypeLower.includes('application/xhtml')) {
+    // 文档类型
+    if (contentTypeLower.includes('text/html') ||
+        contentTypeLower.includes('application/xhtml+xml')) {
       return 'document';
     }
-    
+
+    // CSS样式
     if (contentTypeLower.includes('text/css')) {
       return 'css';
     }
-    
-    if (contentTypeLower.includes('javascript') || 
-        contentTypeLower.includes('application/js')) {
+
+    // JavaScript
+    if (contentTypeLower.includes('javascript') ||
+        contentTypeLower.includes('application/js') ||
+        contentTypeLower.includes('text/javascript') ||
+        contentTypeLower.includes('application/x-javascript')) {
       return 'js';
     }
-    
+
+    // 字体文件
     if (contentTypeLower.includes('font') ||
-        contentTypeLower.includes('application/font')) {
+        contentTypeLower.includes('application/font') ||
+        contentTypeLower.includes('application/vnd.ms-fontobject') ||
+        contentTypeLower.includes('application/x-font-ttf') ||
+        contentTypeLower.includes('application/x-font-woff')) {
       return 'font';
     }
-    
+
+    // 图片
     if (contentTypeLower.startsWith('image/')) {
       return 'image';
     }
-    
-    if (contentTypeLower.startsWith('audio/') || 
+
+    // 媒体文件
+    if (contentTypeLower.startsWith('audio/') ||
         contentTypeLower.startsWith('video/')) {
       return 'media';
     }
-    
+
+    // WebAssembly
     if (contentTypeLower.includes('wasm') ||
         contentTypeLower.includes('application/wasm')) {
       return 'wasm';
     }
+
+    // JSON/XML API响应
+    if (contentTypeLower.includes('application/json') ||
+        contentTypeLower.includes('application/xml') ||
+        contentTypeLower.includes('text/xml')) {
+      return 'fetch';
+    }
   }
+
+  // 检查是否为XHR/Fetch请求（基于请求头）
+  if (headers) {
+    const xRequestedWith = headers['X-Requested-With']?.toLowerCase();
+    const accept = headers['Accept']?.toLowerCase();
+
+    if (xRequestedWith === 'xmlhttprequest') {
+      return 'fetch';
+    }
+
+    // 检查Accept头是否明确要求JSON/XML
+    if (accept?.includes('application/json') && !accept.includes('text/html') ||
+        accept?.includes('application/xml') && !accept.includes('text/html')) {
+      return 'fetch';
+    }
+  }
+
   
   // 根据URL扩展名检测
   if (urlLower.includes('.html') || urlLower.includes('.htm') || 

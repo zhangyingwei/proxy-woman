@@ -98,6 +98,10 @@ export function GetProxyPort() {
   return window['go']['main']['App']['GetProxyPort']();
 }
 
+export function GetResponseHexView(arg1) {
+  return window['go']['main']['App']['GetResponseHexView'](arg1);
+}
+
 export function GetReverseProxyRules() {
   return window['go']['main']['App']['GetReverseProxyRules']();
 }
