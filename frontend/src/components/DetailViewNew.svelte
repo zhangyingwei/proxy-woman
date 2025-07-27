@@ -6,7 +6,7 @@
 
   // 标签状态
   let activeRequestTab: 'headers' | 'payload' | 'debug' = 'headers';
-  let activeResponseTab: 'headers' | 'payload' | 'debug' = 'headers';
+  let activeResponseTab: 'headers' | 'payload' | 'preview' | 'debug' = 'headers';
 
 
 
@@ -198,7 +198,7 @@
   }
 
   // 切换响应标签
-  function switchResponseTab(tab: 'headers' | 'payload' | 'debug') {
+  function switchResponseTab(tab: 'headers' | 'payload' | 'preview' | 'debug') {
     activeResponseTab = tab;
   }
 
@@ -544,6 +544,18 @@
             >
               响应
             </button>
+            {#if $selectedFlow.response?.body}
+              {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
+              {#if isHTML(contentType) || isImage(contentType)}
+                <button
+                  class="sub-tab-button"
+                  class:active={activeResponseTab === 'preview'}
+                  on:click={() => switchResponseTab('preview')}
+                >
+                  预览
+                </button>
+              {/if}
+            {/if}
             {#if DEBUG_ENABLED}
               <button
                 class="sub-tab-button debug-tab"
@@ -578,71 +590,77 @@
                   {@const decodedBodyText = $selectedFlow.response.decodedBody ? bytesToString($selectedFlow.response.decodedBody) : bodyText}
                   {@const isTextContent = isTextType(contentType)}
 
-                  <!-- 原始内容标签 -->
-                  <div class="content-section">
-                    <h4 class="section-title">原始内容</h4>
-                    {#if isTextContent}
-                      <!-- 文本内容直接显示 -->
-                      {@const formattedContent = formatContent(decodedBodyText, contentType)}
-                      <SimpleCodeEditor
-                        value={formattedContent}
-                        language={contentType}
-                        height="400px"
-                      />
+                  {#if isTextContent}
+                    <!-- 文本内容直接显示 -->
+                    {@const formattedContent = formatContent(decodedBodyText, contentType)}
+                    <SimpleCodeEditor
+                      value={formattedContent}
+                      language={contentType}
+                      height="400px"
+                    />
+                  {:else}
+                    <!-- 二进制内容显示16进制 -->
+                    {#if $selectedFlow.response.hexView}
+                      <div class="hex-view">
+                        <pre class="hex-content">{$selectedFlow.response.hexView}</pre>
+                      </div>
                     {:else}
-                      <!-- 二进制内容显示16进制 -->
-                      {#if $selectedFlow.response.hexView}
-                        <div class="hex-view">
-                          <pre class="hex-content">{$selectedFlow.response.hexView}</pre>
+                      <div class="binary-content">
+                        <div class="binary-info">
+                          <span class="content-type-label">二进制内容</span>
+                          <span class="content-size">{bodyText.length} 字节</span>
+                        </div>
+                        <div class="binary-placeholder">
+                          无法显示二进制内容的16进制视图
+                        </div>
+                      </div>
+                    {/if}
+                  {/if}
+                {:else}
+                  <div class="empty-body">无响应数据</div>
+                {/if}
+              {:else}
+                <div class="empty-body">无响应数据</div>
+              {/if}
+            </div>
+          {:else if activeResponseTab === 'preview'}
+            <div class="preview-view">
+              {#if $selectedFlow.response?.body}
+                {@const bodyText = bytesToString($selectedFlow.response.body)}
+                {#if bodyText && bodyText.length > 0}
+                  {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
+                  {@const decodedBodyText = $selectedFlow.response.decodedBody ? bytesToString($selectedFlow.response.decodedBody) : bodyText}
+
+                  {#if isImage(contentType)}
+                    <div class="image-preview">
+                      {#if bodyText}
+                        <div class="image-container">
+                          <img
+                            src="data:{contentType};base64,{bodyText}"
+                            alt="Response Image"
+                            class="response-image"
+                            on:error={(e) => {
+                              const encoded = safeBase64Encode(bodyText);
+                              if (encoded && encoded !== bodyText) {
+                                e.target.src = `data:${contentType};base64,${encoded}`;
+                              }
+                            }}
+                          />
                         </div>
                       {:else}
-                        <div class="binary-content">
-                          <div class="binary-info">
-                            <span class="content-type-label">二进制内容</span>
-                            <span class="content-size">{bodyText.length} 字节</span>
-                          </div>
-                          <div class="binary-placeholder">
-                            无法显示二进制内容的16进制视图
-                          </div>
-                        </div>
-                      {/if}
-                    {/if}
-                  </div>
-
-                  <!-- 预览标签 -->
-                  {#if isHTML(contentType) || isImage(contentType)}
-                    <div class="content-section">
-                      <h4 class="section-title">预览</h4>
-                      {#if isImage(contentType)}
-                        <div class="image-preview">
-                          {#if bodyText}
-                            <div class="image-container">
-                              <img
-                                src="data:{contentType};base64,{bodyText}"
-                                alt="Response Image"
-                                class="response-image"
-                                on:error={(e) => {
-                                  const encoded = safeBase64Encode(bodyText);
-                                  if (encoded && encoded !== bodyText) {
-                                    e.target.src = `data:${contentType};base64,${encoded}`;
-                                  }
-                                }}
-                              />
-                            </div>
-                          {:else}
-                            <div class="error-message">无图片数据</div>
-                          {/if}
-                        </div>
-                      {:else if isHTML(contentType)}
-                        <div class="html-preview">
-                          <iframe
-                            srcdoc={decodedBodyText}
-                            class="html-iframe"
-                            title="HTML Preview"
-                          ></iframe>
-                        </div>
+                        <div class="error-message">无图片数据</div>
                       {/if}
                     </div>
+                  {:else if isHTML(contentType)}
+                    <div class="html-preview">
+                      <iframe
+                        srcdoc={decodedBodyText}
+                        class="html-iframe"
+                        title="HTML Preview"
+                      ></iframe>
+                    </div>
+                  {:else}
+                    <div class="error-message">此内容类型不支持预览</div>
                   {/if}
                 {:else}
                   <div class="empty-body">无响应数据</div>
@@ -775,7 +793,8 @@
   }
 
   .payload-view,
-  .response-view {
+  .response-view,
+  .preview-view {
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 11px;
   }
