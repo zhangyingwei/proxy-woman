@@ -8,6 +8,10 @@
   let activeRequestTab: 'headers' | 'payload' | 'debug' = 'headers';
   let activeResponseTab: 'headers' | 'payload' | 'preview' | 'debug' = 'headers';
 
+  // 加载状态
+  let isLoadingResponse = false;
+  let previousFlowId: string | null = null;
+
 
 
   const DEBUG_ENABLED = false;
@@ -205,6 +209,32 @@
   // 切换响应标签
   function switchResponseTab(tab: 'headers' | 'payload' | 'preview' | 'debug') {
     activeResponseTab = tab;
+  }
+
+  // 监听selectedFlow变化，管理加载状态
+  $: {
+    if ($selectedFlow) {
+      const currentFlowId = $selectedFlow.id;
+
+      // 如果是新的flow或者flow发生变化
+      if (previousFlowId !== currentFlowId) {
+        // 检查响应是否还在加载中
+        if (!$selectedFlow.response || !$selectedFlow.response.body) {
+          isLoadingResponse = true;
+        } else {
+          isLoadingResponse = false;
+        }
+        previousFlowId = currentFlowId;
+      } else {
+        // 同一个flow，检查响应是否已经加载完成
+        if ($selectedFlow.response && $selectedFlow.response.body) {
+          isLoadingResponse = false;
+        }
+      }
+    } else {
+      isLoadingResponse = false;
+      previousFlowId = null;
+    }
   }
 
 
@@ -588,7 +618,12 @@
             </div>
           {:else if activeResponseTab === 'payload'}
             <div class="response-view">
-              {#if $selectedFlow.response?.body}
+              {#if isLoadingResponse}
+                <div class="loading-container">
+                  <div class="loading-spinner"></div>
+                  <div class="loading-text">正在加载响应内容...</div>
+                </div>
+              {:else if $selectedFlow.response?.body}
                 {@const bodyText = bytesToString($selectedFlow.response.body)}
                 {#if bodyText && bodyText.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
@@ -630,7 +665,12 @@
             </div>
           {:else if activeResponseTab === 'preview'}
             <div class="preview-view">
-              {#if $selectedFlow.response?.body}
+              {#if isLoadingResponse}
+                <div class="loading-container">
+                  <div class="loading-spinner"></div>
+                  <div class="loading-text">正在加载预览内容...</div>
+                </div>
+              {:else if $selectedFlow.response?.body}
                 {@const bodyText = bytesToString($selectedFlow.response.body)}
                 {#if bodyText && bodyText.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
@@ -985,6 +1025,36 @@
     text-align: center;
     padding: 20px;
     font-style: italic;
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 200px;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #3E3E42;
+    border-top: 3px solid #007ACC;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  .loading-text {
+    color: #888;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 
   .query-params-grid {

@@ -87,11 +87,17 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
       return 'css';
     }
 
-    // JavaScript
+    // JavaScript - 包括所有JavaScript相关的类型（参考Chrome DevTools）
     if (contentTypeLower.includes('javascript') ||
         contentTypeLower.includes('application/js') ||
         contentTypeLower.includes('text/javascript') ||
-        contentTypeLower.includes('application/x-javascript')) {
+        contentTypeLower.includes('application/x-javascript') ||
+        contentTypeLower.includes('application/ecmascript') ||
+        contentTypeLower.includes('text/ecmascript') ||
+        contentTypeLower.includes('application/typescript') ||
+        contentTypeLower.includes('text/typescript') ||
+        contentTypeLower.includes('application/json') ||  // JSON也算JS类型
+        contentTypeLower.includes('text/json')) {
       return 'js';
     }
 
@@ -121,9 +127,8 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
       return 'wasm';
     }
 
-    // JSON/XML API响应
-    if (contentTypeLower.includes('application/json') ||
-        contentTypeLower.includes('application/xml') ||
+    // XML API响应（JSON已归类为JS）
+    if (contentTypeLower.includes('application/xml') ||
         contentTypeLower.includes('text/xml')) {
       return 'fetch';
     }
@@ -138,9 +143,11 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
       return 'fetch';
     }
 
-    // 检查Accept头是否明确要求JSON/XML
-    if (accept?.includes('application/json') && !accept.includes('text/html') ||
-        accept?.includes('application/xml') && !accept.includes('text/html')) {
+    // 检查Accept头 - JSON归类为JS，XML归类为fetch
+    if (accept?.includes('application/json') && !accept.includes('text/html')) {
+      return 'js';
+    }
+    if (accept?.includes('application/xml') && !accept.includes('text/html')) {
       return 'fetch';
     }
   }
@@ -157,9 +164,15 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
     return 'css';
   }
   
-  if (urlLower.includes('.js') || urlLower.includes('.mjs') || 
+  // JavaScript - 包括所有JavaScript相关的文件扩展名（参考Chrome DevTools）
+  if (urlLower.includes('.js') || urlLower.includes('.mjs') ||
       urlLower.includes('.ts') || urlLower.includes('.jsx') ||
-      urlLower.includes('.tsx')) {
+      urlLower.includes('.tsx') || urlLower.includes('.json') ||
+      urlLower.includes('.jsonp') || urlLower.includes('.es6') ||
+      urlLower.includes('.es') || urlLower.includes('.cjs') ||
+      urlLower.includes('.coffee') || urlLower.includes('.dart') ||
+      urlLower.includes('.ls') || urlLower.includes('.vue') ||
+      urlLower.includes('.svelte')) {
     return 'js';
   }
   
@@ -188,9 +201,9 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
     return 'wasm';
   }
   
-  // 检查是否为API请求（通常是fetch/xhr）
+  // 检查是否为API请求（通常是fetch/xhr）- JSON已归类为JS
   if (urlLower.includes('/api/') || urlLower.includes('/ajax/') ||
-      urlLower.includes('.json') || urlLower.includes('.xml')) {
+      urlLower.includes('.xml')) {
     return 'fetch';
   }
   
