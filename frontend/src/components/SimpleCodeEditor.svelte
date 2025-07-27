@@ -13,18 +13,39 @@
   let isProcessing = false;
   let renderTimeout: number;
 
-  // 性能配置
-  const MAX_RENDER_SIZE = 1000000;  // 1MB以下才渲染，超过则截断
-  const LARGE_CONTENT_THRESHOLD = 100000; // 100KB以上显示loading
+  // 性能配置 - 更激进的限制确保5秒内完成
+  const MAX_RENDER_SIZE = 500000;    // 500KB以下才渲染，超过则截断
+  const LARGE_CONTENT_THRESHOLD = 50000;  // 50KB以上显示loading
+  const CHUNK_SIZE = 100000;         // 100KB分块处理
+  const MAX_PROCESSING_TIME = 5000;  // 最大处理时间5秒
 
 
 
   // 移除语言检测，纯文本展示
 
-  // 简单的HTML转义函数（移除语法高亮以提升性能）
+  // 高性能HTML转义函数 - 使用单次遍历
   function escapeHtml(code: string): string {
     if (!code) return '';
 
+    // 对于大内容，使用更高效的转义方法
+    if (code.length > 50000) {
+      // 使用数组拼接，避免多次字符串替换
+      const chars = [];
+      for (let i = 0; i < code.length; i++) {
+        const char = code[i];
+        switch (char) {
+          case '&': chars.push('&amp;'); break;
+          case '<': chars.push('&lt;'); break;
+          case '>': chars.push('&gt;'); break;
+          case '"': chars.push('&quot;'); break;
+          case "'": chars.push('&#39;'); break;
+          default: chars.push(char); break;
+        }
+      }
+      return chars.join('');
+    }
+
+    // 小内容使用原来的方法
     return code
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -56,17 +77,14 @@
 
     // 根据内容大小决定是否显示loading状态
     if (container && value && value.length > LARGE_CONTENT_THRESHOLD) {
-      container.innerHTML = '<div class="loading-state">正在渲染内容...</div>';
+      container.innerHTML = '<div class="loading-state">正在渲染内容... (最长5秒)</div>';
       isProcessing = true;
     }
 
-    // 根据内容大小调整延迟时间，大内容使用更长延迟确保UI响应
-    const delay = 1;
-
-    // 异步更新内容
+    // 立即开始处理，不延迟
     renderTimeout = setTimeout(() => {
       updateContent();
-    }, delay);
+    }, 1);
   }
 
   function updateContent() {
@@ -87,20 +105,73 @@
       isTruncated = true;
     }
 
-    // 直接转义HTML，纯文本展示（提升性能）
-    const escaped = escapeHtml(contentToRender);
+    const startTime = Date.now();
 
-    // 使用requestAnimationFrame确保不阻塞UI
+    // 分块处理大内容
+    if (contentToRender.length > CHUNK_SIZE) {
+      processContentInChunks(contentToRender, isTruncated, startTime);
+    } else {
+      // 小内容直接处理
+      processContentDirectly(contentToRender, isTruncated);
+    }
+  }
+
+  // 直接处理小内容
+  function processContentDirectly(content: string, isTruncated: boolean) {
+    const escaped = escapeHtml(content);
+    renderContent(escaped, content.length, isTruncated);
+  }
+
+  // 分块处理大内容
+  function processContentInChunks(content: string, isTruncated: boolean, startTime: number) {
+    const chunks = [];
+    let currentIndex = 0;
+
+    function processNextChunk() {
+      const currentTime = Date.now();
+
+      // 超时检查 - 如果超过5秒，强制截断
+      if (currentTime - startTime > MAX_PROCESSING_TIME) {
+        const processedContent = chunks.join('');
+        renderContent(processedContent, content.length, true, true); // 标记为超时截断
+        return;
+      }
+
+      // 处理下一个块
+      if (currentIndex < content.length) {
+        const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, content.length);
+        const chunk = content.substring(currentIndex, chunkEnd);
+        const escapedChunk = escapeHtml(chunk);
+        chunks.push(escapedChunk);
+        currentIndex = chunkEnd;
+
+        // 使用setTimeout让出控制权，避免阻塞UI
+        setTimeout(processNextChunk, 1);
+      } else {
+        // 所有块处理完成
+        const finalContent = chunks.join('');
+        renderContent(finalContent, content.length, isTruncated);
+      }
+    }
+
+    // 开始处理第一个块
+    processNextChunk();
+  }
+
+  // 渲染最终内容
+  function renderContent(escapedContent: string, originalLength: number, isTruncated: boolean, isTimeout: boolean = false) {
     requestAnimationFrame(() => {
       if (container) {
-        let content = `<pre class="plain-text">${escaped}</pre>`;
+        let content = `<pre class="plain-text">${escapedContent}</pre>`;
 
-        // 添加性能提示（已移除语法高亮）
-        if (contentToRender.length > LARGE_CONTENT_THRESHOLD) {
-          content += `<div class="performance-notice">内容较大 (${(contentToRender.length / 1024).toFixed(1)}KB)，已优化渲染性能</div>`;
+        // 添加性能提示
+        if (originalLength > LARGE_CONTENT_THRESHOLD) {
+          content += `<div class="performance-notice">内容较大 (${(originalLength / 1024).toFixed(1)}KB)，已优化渲染性能</div>`;
         }
 
-        if (isTruncated) {
+        if (isTimeout) {
+          content += `<div class="truncated-notice">内容处理超时（5秒），已截断显示以确保响应性能</div>`;
+        } else if (isTruncated) {
           content += `<div class="truncated-notice">内容过大，已截断显示前 ${MAX_RENDER_SIZE.toLocaleString()} 字符</div>`;
         }
 
