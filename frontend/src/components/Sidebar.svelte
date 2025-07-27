@@ -25,7 +25,6 @@
 
   let domainGroups: DomainGroup[] = [];
   let appGroups: AppGroup[] = [];
-  let pinnedFlows: Flow[] = [];
   let expandedDomains = new Set<string>();
   let expandedApps = new Set<string>();
   let groupType: GroupType = 'domain';
@@ -47,7 +46,6 @@
     } else {
       updateAppGroups($filteredFlows);
     }
-    updatePinnedFlows($flows);
   }
 
   function updateDomainGroups(flows: Flow[]) {
@@ -115,9 +113,7 @@
     }).sort((a, b) => b.count - a.count);
   }
 
-  function updatePinnedFlows(flows: Flow[]) {
-    pinnedFlows = flows.filter(flow => flow.isPinned);
-  }
+
 
   function toggleDomain(domain: string) {
     // 直接修改对应的组，避免重新计算所有组
@@ -179,39 +175,7 @@
 </script>
 
 <div class="sidebar">
-  <!-- 钉住的请求 -->
-  {#if pinnedFlows.length > 0}
-    <div class="section">
-      <div class="section-header">
-        <span class="section-title">📌 收藏</span>
-        <span class="section-count">{pinnedFlows.length}</span>
-      </div>
-      <div class="flow-list">
-        {#each pinnedFlows as flow (flow.id)}
-          <div
-            class="flow-item pinned"
-            on:click={() => selectFlow(flow)}
-            on:keydown={(e) => e.key === 'Enter' && selectFlow(flow)}
-            tabindex="0"
-          >
-            <div class="flow-id">#{getFlowIndex(flow)}</div>
-            <div class="flow-method" style="color: {getMethodColor(flow.method)}">
-              {flow.method}
-            </div>
-            <div class="flow-url" title={flow.url}>
-              {flow.path || '/'}
-            </div>
-            <div
-              class="flow-status"
-              style="color: {getStatusColor(flow.statusCode)}"
-            >
-              {flow.statusCode || '-'}
-            </div>
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/if}
+
 
   <!-- 分组类型切换 -->
   <div class="section">
@@ -405,7 +369,7 @@
     font-size: 10px;
   }
 
-  .flow-list, .domain-list {
+  .domain-list {
     flex: 1;
     overflow-y: auto;
   }

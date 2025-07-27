@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { filteredFlows, flowActions } from '../stores/flowStore';
+  import { filteredFlows } from '../stores/flowStore';
   import { selectionActions } from '../stores/selectionStore';
-  import { proxyService } from '../services/ProxyService';
   import type { Flow } from '../stores/flowStore';
-  import { detectRequestType, getAllRequestTypes, type RequestType, type RequestTypeInfo } from '../utils/requestTypeUtils';
+  import { detectRequestType, getAllRequestTypes, getAllHttpMethods, type RequestType, type HttpMethod } from '../utils/requestTypeUtils';
+  import { formatRelativeTime, formatAbsoluteTime, formatDuration, formatSize } from '../utils/timeUtils';
   import ContextMenu from './ContextMenu.svelte';
   import ExportDropdown from './ExportDropdown.svelte';
   import ScriptLogViewer from './ScriptLogViewer.svelte';
@@ -11,7 +11,9 @@
 
   // 过滤状态
   let selectedRequestType: RequestType | null = null; // 改为单选
+  let selectedHttpMethod: HttpMethod | null = null; // HTTP方法过滤
   let allRequestTypes = getAllRequestTypes();
+  let allHttpMethods = getAllHttpMethods();
   let searchText = '';
 
   // 右键菜单状态
@@ -39,6 +41,13 @@
       }
     }
 
+    // HTTP方法过滤
+    if (selectedHttpMethod !== null) {
+      if (flow.method.toUpperCase() !== selectedHttpMethod) {
+        return false;
+      }
+    }
+
     // 文本过滤
     if (searchText.trim()) {
       const searchLower = searchText.toLowerCase();
@@ -60,9 +69,20 @@
     }
   }
 
+  // 切换HTTP方法过滤
+  function toggleHttpMethod(method: HttpMethod) {
+    if (selectedHttpMethod === method) {
+      selectedHttpMethod = null; // 取消选择
+    } else {
+      selectedHttpMethod = method; // 选择新方法
+    }
+  }
+
   // 清除所有过滤
   function clearAllFilters() {
     selectedRequestType = null;
+    selectedHttpMethod = null;
+    searchText = '';
   }
 
   // 获取状态码对应的颜色
@@ -73,21 +93,7 @@
     return '#CCCCCC'; // 默认灰色
   }
 
-  // 格式化文件大小
-  function formatSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
 
-  // 格式化持续时间
-  function formatDuration(nanoseconds: number): string {
-    const ms = nanoseconds / 1000000;
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  }
 
   // 获取标签显示名称
   function getTagDisplayName(tag: string): string {
@@ -148,16 +154,7 @@
     scriptLogViewerFlow = null;
   }
 
-  // 切换钉住状态
-  async function togglePin(flow: Flow, event: Event) {
-    event.stopPropagation(); // 阻止行点击事件
-    try {
-      await proxyService.pinFlow(flow.id);
-      flowActions.togglePin(flow.id);
-    } catch (error) {
-      console.error('Failed to toggle pin:', error);
-    }
-  }
+
 </script>
 
 <div class="flow-table-container">
@@ -178,26 +175,48 @@
       {/if}
     </div>
 
-    <!-- 请求类型过滤器 -->
+    <!-- 过滤器 -->
     <div class="request-type-filters">
       <div class="filter-header">
-        <span class="filter-title">请求类型:</span>
+        <span class="filter-title">过滤器:</span>
         <button class="clear-filters-btn" on:click={clearAllFilters}>
           清除过滤
         </button>
       </div>
       <div class="filter-buttons">
         <div class="filter-buttons-left">
-          {#each allRequestTypes as typeInfo}
-            <button
-              class="filter-btn"
-              class:active={selectedRequestType === typeInfo.type}
-              style="--type-color: {typeInfo.color}"
-              on:click={() => toggleRequestType(typeInfo.type)}
-            >
-              <span class="filter-label">{typeInfo.label}</span>
-            </button>
-          {/each}
+          <!-- 请求类型分组 -->
+          <div class="filter-group">
+            <span class="group-label">类型:</span>
+            {#each allRequestTypes as typeInfo}
+              <button
+                class="filter-btn"
+                class:active={selectedRequestType === typeInfo.type}
+                style="--type-color: {typeInfo.color}"
+                on:click={() => toggleRequestType(typeInfo.type)}
+              >
+                <span class="filter-label">{typeInfo.label}</span>
+              </button>
+            {/each}
+          </div>
+
+          <!-- 分隔符 -->
+          <div class="filter-separator">|</div>
+
+          <!-- HTTP方法分组 -->
+          <div class="filter-group">
+            <span class="group-label">方法:</span>
+            {#each allHttpMethods as methodInfo}
+              <button
+                class="filter-btn method-btn"
+                class:active={selectedHttpMethod === methodInfo.method}
+                style="--type-color: {methodInfo.color}"
+                on:click={() => toggleHttpMethod(methodInfo.method)}
+              >
+                <span class="filter-label">{methodInfo.label}</span>
+              </button>
+            {/each}
+          </div>
         </div>
 
         <!-- 导出按钮居右 -->
@@ -213,13 +232,13 @@
     <thead>
       <tr>
         <th class="row-number-col">#</th>
-        <th class="pin-col">📌</th>
         <th class="status-col">状态</th>
         <th class="method-col">方法</th>
         <th class="url-col">URL</th>
         <th class="status-code-col">状态码</th>
         <th class="size-col">大小</th>
         <th class="duration-col">时长</th>
+        <th class="time-col">时间</th>
         <th class="tags-col">标签</th>
       </tr>
     </thead>
@@ -227,7 +246,6 @@
       {#each filteredByType as flow, index (`${flow.id}-${index}`)}
         <tr
           class="flow-row"
-          class:pinned={flow.isPinned}
           on:click={() => handleRowClick(flow)}
           on:contextmenu={(e) => handleContextMenu(e, flow)}
           on:keydown={(e) => e.key === 'Enter' && handleRowClick(flow)}
@@ -235,16 +253,6 @@
         >
           <td class="row-number-col">
             <span class="row-number">{index + 1}</span>
-          </td>
-          <td class="pin-col">
-            <button
-              class="pin-button"
-              class:pinned={flow.isPinned}
-              on:click={(e) => togglePin(flow, e)}
-              title={flow.isPinned ? '取消钉住' : '钉住'}
-            >
-              📌
-            </button>
           </td>
           <td class="status-col">
             <div
@@ -270,6 +278,9 @@
           </td>
           <td class="duration-col">
             {formatDuration(flow.duration)}
+          </td>
+          <td class="time-col" title={formatAbsoluteTime(flow.startTime)}>
+            {formatRelativeTime(flow.startTime)}
           </td>
           <td class="tags-col">
             <div class="flow-tags">
@@ -371,8 +382,29 @@
   .filter-buttons-left {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 8px;
     flex: 1;
+    align-items: center;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .group-label {
+    font-size: 10px;
+    color: #888;
+    margin-right: 4px;
+    font-weight: 500;
+  }
+
+  .filter-separator {
+    color: #666;
+    font-size: 14px;
+    margin: 0 8px;
+    font-weight: 300;
   }
 
   .filter-buttons-right {
@@ -404,6 +436,15 @@
     color: white;
     border-color: var(--type-color);
     font-weight: 500;
+  }
+
+  .filter-btn.method-btn {
+    min-width: 50px;
+    font-weight: 600;
+  }
+
+  .filter-btn.method-btn.active {
+    box-shadow: 0 0 0 1px var(--type-color);
   }
 
   .filter-label {
@@ -515,10 +556,6 @@
     background-color: #2A2D2E;
   }
 
-  .flow-row.pinned {
-    background-color: #2D2D30;
-  }
-
   .row-number-col {
     width: 40px;
     text-align: center;
@@ -531,31 +568,6 @@
     color: #888;
     font-size: 10px;
     font-weight: 500;
-  }
-
-  .pin-col {
-    width: 30px;
-    text-align: center;
-  }
-
-  .pin-button {
-    background: none;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    font-size: 10px;
-    padding: 2px;
-    border-radius: 2px;
-    transition: all 0.1s ease;
-  }
-
-  .pin-button:hover {
-    background-color: #3E3E42;
-    color: #CCCCCC;
-  }
-
-  .pin-button.pinned {
-    color: #FFA500;
   }
 
   .status-col {
@@ -588,6 +600,14 @@
   .duration-col {
     width: 80px;
     text-align: right;
+  }
+
+  .time-col {
+    width: 90px;
+    text-align: center;
+    font-size: 10px;
+    color: #888;
+    cursor: help;
   }
 
   .tags-col {

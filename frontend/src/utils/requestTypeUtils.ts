@@ -1,9 +1,17 @@
 // 请求类型工具函数
 
 export type RequestType = 'fetch' | 'document' | 'css' | 'js' | 'json' | 'font' | 'image' | 'media' | 'wasm' | 'other';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE';
 
 export interface RequestTypeInfo {
   type: RequestType;
+  label: string;
+  icon: string;
+  color: string;
+}
+
+export interface HttpMethodInfo {
+  method: HttpMethod;
   label: string;
   icon: string;
   color: string;
@@ -70,6 +78,58 @@ export const REQUEST_TYPES: Record<RequestType, RequestTypeInfo> = {
     label: '其他',
     icon: '📦',
     color: '#95A5A6'
+  }
+};
+
+// HTTP方法配置
+export const HTTP_METHODS: Record<HttpMethod, HttpMethodInfo> = {
+  GET: {
+    method: 'GET',
+    label: 'GET',
+    icon: '📥',
+    color: '#4CAF50'
+  },
+  POST: {
+    method: 'POST',
+    label: 'POST',
+    icon: '📤',
+    color: '#FF9800'
+  },
+  PUT: {
+    method: 'PUT',
+    label: 'PUT',
+    icon: '✏️',
+    color: '#2196F3'
+  },
+  DELETE: {
+    method: 'DELETE',
+    label: 'DELETE',
+    icon: '🗑️',
+    color: '#F44336'
+  },
+  PATCH: {
+    method: 'PATCH',
+    label: 'PATCH',
+    icon: '🔧',
+    color: '#9C27B0'
+  },
+  HEAD: {
+    method: 'HEAD',
+    label: 'HEAD',
+    icon: '👁️',
+    color: '#607D8B'
+  },
+  OPTIONS: {
+    method: 'OPTIONS',
+    label: 'OPTIONS',
+    icon: '⚙️',
+    color: '#795548'
+  },
+  TRACE: {
+    method: 'TRACE',
+    label: 'TRACE',
+    icon: '🔍',
+    color: '#9E9E9E'
   }
 };
 
@@ -236,4 +296,19 @@ export function getAllRequestTypes(): RequestTypeInfo[] {
  */
 export function getRequestTypeInfo(type: RequestType): RequestTypeInfo {
   return REQUEST_TYPES[type];
+}
+
+/**
+ * 获取所有HTTP方法列表
+ */
+export function getAllHttpMethods(): HttpMethodInfo[] {
+  return Object.values(HTTP_METHODS);
+}
+
+/**
+ * 根据方法获取HTTP方法信息
+ */
+export function getHttpMethodInfo(method: string): HttpMethodInfo | null {
+  const upperMethod = method.toUpperCase() as HttpMethod;
+  return HTTP_METHODS[upperMethod] || null;
 }

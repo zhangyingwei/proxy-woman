@@ -43,31 +43,39 @@
 
   function toggleDropdown() {
     isOpen = !isOpen;
-    if (isOpen && buttonElement && menuElement) {
-      // 计算按钮位置
-      const buttonRect = buttonElement.getBoundingClientRect();
-      const menuWidth = 320;
-      const menuHeight = 400; // 估算高度
+    if (isOpen) {
+      // 使用 nextTick 确保 DOM 更新后再计算位置
+      setTimeout(() => {
+        if (buttonElement && menuElement) {
+          // 计算按钮位置
+          const buttonRect = buttonElement.getBoundingClientRect();
+          const menuWidth = 360; // 增加宽度以容纳更多内容
+          const menuHeight = 480; // 增加高度以容纳所有选项
 
-      // 计算最佳位置
-      let left = buttonRect.right - menuWidth;
-      let top = buttonRect.bottom + 4;
+          // 计算最佳位置
+          let left = buttonRect.right - menuWidth;
+          let top = buttonRect.bottom + 4;
 
-      // 确保不超出视窗边界
-      if (left < 8) {
-        left = 8;
-      }
-      if (left + menuWidth > window.innerWidth - 8) {
-        left = window.innerWidth - menuWidth - 8;
-      }
+          // 确保不超出视窗边界
+          if (left < 8) {
+            left = 8;
+          }
+          if (left + menuWidth > window.innerWidth - 8) {
+            left = window.innerWidth - menuWidth - 8;
+          }
 
-      if (top + menuHeight > window.innerHeight - 8) {
-        top = buttonRect.top - menuHeight - 4;
-      }
+          if (top + menuHeight > window.innerHeight - 8) {
+            top = buttonRect.top - menuHeight - 4;
+          }
 
-      // 应用位置
-      menuElement.style.left = `${left}px`;
-      menuElement.style.top = `${top}px`;
+          // 应用位置
+          menuElement.style.left = `${left}px`;
+          menuElement.style.top = `${top}px`;
+          menuElement.style.width = `${menuWidth}px`;
+          menuElement.style.maxHeight = `${Math.min(menuHeight, window.innerHeight - 16)}px`;
+          menuElement.style.overflowY = 'auto';
+        }
+      }, 0);
     }
   }
 
@@ -264,8 +272,10 @@
     border-radius: 6px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     z-index: 9999;
-    min-width: 320px;
+    min-width: 360px;
     max-width: 400px;
+    max-height: 480px;
+    overflow-y: auto;
   }
 
   .dropdown-header {
