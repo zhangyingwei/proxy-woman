@@ -9,5 +9,11 @@
   "author": {
     "name": "zhangyingwei",
     "email": "zhangyw001@gmail.com"
+  },
+  "info": {
+    "productName": "ProxyWoman",
+    "productVersion": "1.0.0",
+    "copyright": "© 2024 zhangyingwei. All rights reserved.",
+    "comments": "A modern network proxy analysis tool with elegant design"
   }
 }

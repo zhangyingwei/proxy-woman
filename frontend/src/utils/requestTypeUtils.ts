@@ -1,6 +1,6 @@
 // 请求类型工具函数
 
-export type RequestType = 'fetch' | 'document' | 'css' | 'js' | 'font' | 'image' | 'media' | 'wasm' | 'other';
+export type RequestType = 'fetch' | 'document' | 'css' | 'js' | 'json' | 'font' | 'image' | 'media' | 'wasm' | 'other';
 
 export interface RequestTypeInfo {
   type: RequestType;
@@ -34,6 +34,12 @@ export const REQUEST_TYPES: Record<RequestType, RequestTypeInfo> = {
     label: 'JS',
     icon: '⚡',
     color: '#F7DF1E'
+  },
+  json: {
+    type: 'json',
+    label: 'JSON',
+    icon: '📄',
+    color: '#FF6B35'
   },
   font: {
     type: 'font',
@@ -87,6 +93,12 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
       return 'css';
     }
 
+    // JSON - 专门的JSON类型检测
+    if (contentTypeLower.includes('application/json') ||
+        contentTypeLower.includes('text/json')) {
+      return 'json';
+    }
+
     // JavaScript - 包括所有JavaScript相关的类型（参考Chrome DevTools）
     if (contentTypeLower.includes('javascript') ||
         contentTypeLower.includes('application/js') ||
@@ -95,9 +107,7 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
         contentTypeLower.includes('application/ecmascript') ||
         contentTypeLower.includes('text/ecmascript') ||
         contentTypeLower.includes('application/typescript') ||
-        contentTypeLower.includes('text/typescript') ||
-        contentTypeLower.includes('application/json') ||  // JSON也算JS类型
-        contentTypeLower.includes('text/json')) {
+        contentTypeLower.includes('text/typescript')) {
       return 'js';
     }
 
@@ -143,9 +153,9 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
       return 'fetch';
     }
 
-    // 检查Accept头 - JSON归类为JS，XML归类为fetch
+    // 检查Accept头 - JSON有专门类型，XML归类为fetch
     if (accept?.includes('application/json') && !accept.includes('text/html')) {
-      return 'js';
+      return 'json';
     }
     if (accept?.includes('application/xml') && !accept.includes('text/html')) {
       return 'fetch';
@@ -164,11 +174,15 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
     return 'css';
   }
   
+  // JSON - 专门检测JSON文件
+  if (urlLower.includes('.json') || urlLower.includes('.jsonp')) {
+    return 'json';
+  }
+
   // JavaScript - 包括所有JavaScript相关的文件扩展名（参考Chrome DevTools）
   if (urlLower.includes('.js') || urlLower.includes('.mjs') ||
       urlLower.includes('.ts') || urlLower.includes('.jsx') ||
-      urlLower.includes('.tsx') || urlLower.includes('.json') ||
-      urlLower.includes('.jsonp') || urlLower.includes('.es6') ||
+      urlLower.includes('.tsx') || urlLower.includes('.es6') ||
       urlLower.includes('.es') || urlLower.includes('.cjs') ||
       urlLower.includes('.coffee') || urlLower.includes('.dart') ||
       urlLower.includes('.ls') || urlLower.includes('.vue') ||
@@ -201,7 +215,7 @@ export function detectRequestType(url: string, contentType?: string, headers?: R
     return 'wasm';
   }
   
-  // 检查是否为API请求（通常是fetch/xhr）- JSON已归类为JS
+  // 检查是否为API请求（通常是fetch/xhr）- JSON已有专门类型
   if (urlLower.includes('/api/') || urlLower.includes('/ajax/') ||
       urlLower.includes('.xml')) {
     return 'fetch';

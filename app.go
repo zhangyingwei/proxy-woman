@@ -502,12 +502,26 @@ func (a *App) ExportFlows(options export.ExportOptions) (*export.ExportResult, e
 	return result, nil
 }
 
-// DecryptRequestBody 解密请求体
+// DecryptRequestBody 解密请求体 (保留用于导出功能)
 func (a *App) DecryptRequestBody(body []byte, headers map[string]string) ([]byte, error) {
 	return a.exportService.DecryptBody(body, headers)
 }
 
-// DecryptResponseBody 解密响应体
+// DecryptResponseBody 解密响应体 (保留用于导出功能)
 func (a *App) DecryptResponseBody(body []byte, headers map[string]string) ([]byte, error) {
 	return a.exportService.DecryptBody(body, headers)
+}
+
+// GetResponseHexView 获取响应体的16进制视图
+func (a *App) GetResponseHexView(flowID string) (string, error) {
+	flow, exists := a.proxyServer.GetFlow(flowID)
+	if !exists {
+		return "", fmt.Errorf("flow not found: %s", flowID)
+	}
+
+	if flow.Response == nil {
+		return "", fmt.Errorf("no response data")
+	}
+
+	return flow.Response.HexView, nil
 }

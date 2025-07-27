@@ -218,16 +218,27 @@
 
       // 如果是新的flow或者flow发生变化
       if (previousFlowId !== currentFlowId) {
-        // 检查响应是否还在加载中
-        if (!$selectedFlow.response || !$selectedFlow.response.body) {
-          isLoadingResponse = true;
-        } else {
-          isLoadingResponse = false;
-        }
+        // 立即设置为loading状态，然后检查响应状态
+        isLoadingResponse = true;
         previousFlowId = currentFlowId;
+
+        // 使用setTimeout来异步检查响应状态，确保UI能够更新
+        setTimeout(() => {
+          if ($selectedFlow && $selectedFlow.id === currentFlowId) {
+            // 检查是否有响应或者请求已经完成
+            if ($selectedFlow.response !== undefined) {
+              // 有响应对象，无论是否有body都不再loading
+              isLoadingResponse = false;
+            } else if ($selectedFlow.endTime) {
+              // 请求已经结束但没有响应对象，也不再loading
+              isLoadingResponse = false;
+            }
+            // 如果既没有响应也没有结束时间，保持loading状态
+          }
+        }, 100);
       } else {
         // 同一个flow，检查响应是否已经加载完成
-        if ($selectedFlow.response && $selectedFlow.response.body) {
+        if ($selectedFlow.response !== undefined || $selectedFlow.endTime) {
           isLoadingResponse = false;
         }
       }
@@ -623,7 +634,7 @@
                   <div class="loading-spinner"></div>
                   <div class="loading-text">正在加载响应内容...</div>
                 </div>
-              {:else if $selectedFlow.response?.body}
+              {:else if $selectedFlow && $selectedFlow.response && $selectedFlow.response.body}
                 {@const bodyText = bytesToString($selectedFlow.response.body)}
                 {#if bodyText && bodyText.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
@@ -657,10 +668,10 @@
                     {/if}
                   {/if}
                 {:else}
-                  <div class="empty-body">无响应数据</div>
+                  <div class="empty-body">无响应内容</div>
                 {/if}
               {:else}
-                <div class="empty-body">无响应数据</div>
+                <div class="empty-body">无响应内容</div>
               {/if}
             </div>
           {:else if activeResponseTab === 'preview'}
@@ -670,7 +681,7 @@
                   <div class="loading-spinner"></div>
                   <div class="loading-text">正在加载预览内容...</div>
                 </div>
-              {:else if $selectedFlow.response?.body}
+              {:else if $selectedFlow && $selectedFlow.response && $selectedFlow.response.body}
                 {@const bodyText = bytesToString($selectedFlow.response.body)}
                 {#if bodyText && bodyText.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
@@ -714,10 +725,10 @@
                     <div class="error-message">此内容类型不支持预览</div>
                   {/if}
                 {:else}
-                  <div class="empty-body">无响应数据</div>
+                  <div class="empty-body">无响应内容</div>
                 {/if}
               {:else}
-                <div class="empty-body">无响应数据</div>
+                <div class="empty-body">无响应内容</div>
               {/if}
             </div>
 
@@ -1193,6 +1204,7 @@
     white-space: nowrap;
     flex: 1;
     min-width: 0;
+    text-align: left;
   }
 
   .request-meta-info {

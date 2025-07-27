@@ -1,0 +1,797 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProxyWoman Icon Preview</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        h1 {
+            margin: 0 0 30px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 30px;
+            margin: 30px 0;
+            max-width: 800px;
+        }
+        
+        .icon-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .icon-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+        
+        .icon-item svg {
+            width: 100%;
+            height: auto;
+            max-width: 80px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+        
+        .icon-size {
+            margin-top: 10px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 40px;
+            max-width: 600px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #f093fb;
+        }
+        
+        .instructions code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 ProxyWoman Icon</h1>
+        
+        <div class="icon-grid">
+            <div class="icon-item">
+                <?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 渐变定义 -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 阴影滤镜 -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- 发光效果 -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="240" fill="url(#primaryGradient)" filter="url(#shadow)"/>
+  
+  <!-- 内部装饰圆环 -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  
+  <!-- 主要网络节点 - 中心 -->
+  <circle cx="256" cy="256" r="24" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="16" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="256" cy="256" r="8" fill="url(#accentGradient)"/>
+  
+  <!-- 周围网络节点 -->
+  <!-- 上方节点 -->
+  <circle cx="256" cy="160" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="160" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右上节点 -->
+  <circle cx="340" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右方节点 -->
+  <circle cx="380" cy="256" r="18" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="380" cy="256" r="12" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右下节点 -->
+  <circle cx="340" cy="312" r="12" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="312" r="6" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 下方节点 -->
+  <circle cx="256" cy="352" r="15" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="352" r="9" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左下节点 -->
+  <circle cx="172" cy="312" r="13" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="312" r="7" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左方节点 -->
+  <circle cx="132" cy="256" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="132" cy="256" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左上节点 -->
+  <circle cx="172" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 连接线 -->
+  <!-- 中心到各个节点的连接 -->
+  <line x1="256" y1="232" x2="256" y2="176" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="232" x2="324" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="256" x2="364" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="280" x2="324" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="256" y1="280" x2="256" y2="336" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="280" x2="188" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="256" x2="148" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="232" x2="188" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- 节点间的连接线 -->
+  <line x1="256" y1="160" x2="324" y2="192" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="200" x2="364" y2="240" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="380" y1="256" x2="356" y2="296" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="312" x2="272" y2="336" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="256" y1="352" x2="188" y2="328" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="312" x2="148" y2="272" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="132" y1="256" x2="156" y2="216" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="200" x2="240" y2="176" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- 数据流动效果 -->
+  <g opacity="0.8">
+    <!-- 流动的粒子 -->
+    <circle cx="200" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,38 56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,38 -56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="200" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,-38 56,-76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.8s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,-38 -56,-76"/>
+      </animateMotion>
+    </circle>
+  </g>
+  
+  <!-- 女性化装饰元素 -->
+  <g opacity="0.4">
+    <!-- 优雅的弧线装饰 -->
+    <path d="M 180,120 Q 256,140 332,120" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 180,392 Q 256,372 332,392" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 120,180 Q 140,256 120,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 392,180 Q 372,256 392,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- 中心标识 - P字母变形 -->
+  <g transform="translate(256,256)">
+    <path d="M -20,-30 L -20,30 M -20,-30 L 0,-30 Q 15,-30 15,-15 Q 15,0 0,0 L -20,0" 
+          stroke="rgba(255,255,255,0.9)" 
+          stroke-width="4" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+  </g>
+  
+  <!-- 外圈装饰点 -->
+  <g opacity="0.6">
+    <circle cx="256" cy="80" r="2" fill="url(#accentGradient)"/>
+    <circle cx="432" cy="256" r="2" fill="url(#accentGradient)"/>
+    <circle cx="256" cy="432" r="2" fill="url(#accentGradient)"/>
+    <circle cx="80" cy="256" r="2" fill="url(#accentGradient)"/>
+    
+    <circle cx="362" cy="150" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="362" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="150" r="1.5" fill="url(#accentGradient)"/>
+  </g>
+</svg>
+
+                <div class="icon-size">512x512</div>
+            </div>
+            <div class="icon-item">
+                <div style="width: 64px; height: 64px; margin: 0 auto;">
+                    <?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 渐变定义 -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 阴影滤镜 -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- 发光效果 -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="240" fill="url(#primaryGradient)" filter="url(#shadow)"/>
+  
+  <!-- 内部装饰圆环 -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  
+  <!-- 主要网络节点 - 中心 -->
+  <circle cx="256" cy="256" r="24" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="16" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="256" cy="256" r="8" fill="url(#accentGradient)"/>
+  
+  <!-- 周围网络节点 -->
+  <!-- 上方节点 -->
+  <circle cx="256" cy="160" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="160" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右上节点 -->
+  <circle cx="340" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右方节点 -->
+  <circle cx="380" cy="256" r="18" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="380" cy="256" r="12" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右下节点 -->
+  <circle cx="340" cy="312" r="12" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="312" r="6" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 下方节点 -->
+  <circle cx="256" cy="352" r="15" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="352" r="9" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左下节点 -->
+  <circle cx="172" cy="312" r="13" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="312" r="7" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左方节点 -->
+  <circle cx="132" cy="256" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="132" cy="256" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左上节点 -->
+  <circle cx="172" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 连接线 -->
+  <!-- 中心到各个节点的连接 -->
+  <line x1="256" y1="232" x2="256" y2="176" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="232" x2="324" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="256" x2="364" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="280" x2="324" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="256" y1="280" x2="256" y2="336" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="280" x2="188" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="256" x2="148" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="232" x2="188" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- 节点间的连接线 -->
+  <line x1="256" y1="160" x2="324" y2="192" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="200" x2="364" y2="240" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="380" y1="256" x2="356" y2="296" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="312" x2="272" y2="336" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="256" y1="352" x2="188" y2="328" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="312" x2="148" y2="272" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="132" y1="256" x2="156" y2="216" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="200" x2="240" y2="176" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- 数据流动效果 -->
+  <g opacity="0.8">
+    <!-- 流动的粒子 -->
+    <circle cx="200" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,38 56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,38 -56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="200" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,-38 56,-76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.8s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,-38 -56,-76"/>
+      </animateMotion>
+    </circle>
+  </g>
+  
+  <!-- 女性化装饰元素 -->
+  <g opacity="0.4">
+    <!-- 优雅的弧线装饰 -->
+    <path d="M 180,120 Q 256,140 332,120" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 180,392 Q 256,372 332,392" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 120,180 Q 140,256 120,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 392,180 Q 372,256 392,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- 中心标识 - P字母变形 -->
+  <g transform="translate(256,256)">
+    <path d="M -20,-30 L -20,30 M -20,-30 L 0,-30 Q 15,-30 15,-15 Q 15,0 0,0 L -20,0" 
+          stroke="rgba(255,255,255,0.9)" 
+          stroke-width="4" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+  </g>
+  
+  <!-- 外圈装饰点 -->
+  <g opacity="0.6">
+    <circle cx="256" cy="80" r="2" fill="url(#accentGradient)"/>
+    <circle cx="432" cy="256" r="2" fill="url(#accentGradient)"/>
+    <circle cx="256" cy="432" r="2" fill="url(#accentGradient)"/>
+    <circle cx="80" cy="256" r="2" fill="url(#accentGradient)"/>
+    
+    <circle cx="362" cy="150" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="362" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="150" r="1.5" fill="url(#accentGradient)"/>
+  </g>
+</svg>
+
+                </div>
+                <div class="icon-size">64x64</div>
+            </div>
+            <div class="icon-item">
+                <div style="width: 32px; height: 32px; margin: 0 auto;">
+                    <?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 渐变定义 -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 阴影滤镜 -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- 发光效果 -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="240" fill="url(#primaryGradient)" filter="url(#shadow)"/>
+  
+  <!-- 内部装饰圆环 -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  
+  <!-- 主要网络节点 - 中心 -->
+  <circle cx="256" cy="256" r="24" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="16" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="256" cy="256" r="8" fill="url(#accentGradient)"/>
+  
+  <!-- 周围网络节点 -->
+  <!-- 上方节点 -->
+  <circle cx="256" cy="160" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="160" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右上节点 -->
+  <circle cx="340" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右方节点 -->
+  <circle cx="380" cy="256" r="18" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="380" cy="256" r="12" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右下节点 -->
+  <circle cx="340" cy="312" r="12" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="312" r="6" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 下方节点 -->
+  <circle cx="256" cy="352" r="15" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="352" r="9" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左下节点 -->
+  <circle cx="172" cy="312" r="13" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="312" r="7" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左方节点 -->
+  <circle cx="132" cy="256" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="132" cy="256" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左上节点 -->
+  <circle cx="172" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 连接线 -->
+  <!-- 中心到各个节点的连接 -->
+  <line x1="256" y1="232" x2="256" y2="176" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="232" x2="324" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="256" x2="364" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="280" x2="324" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="256" y1="280" x2="256" y2="336" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="280" x2="188" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="256" x2="148" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="232" x2="188" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- 节点间的连接线 -->
+  <line x1="256" y1="160" x2="324" y2="192" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="200" x2="364" y2="240" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="380" y1="256" x2="356" y2="296" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="312" x2="272" y2="336" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="256" y1="352" x2="188" y2="328" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="312" x2="148" y2="272" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="132" y1="256" x2="156" y2="216" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="200" x2="240" y2="176" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- 数据流动效果 -->
+  <g opacity="0.8">
+    <!-- 流动的粒子 -->
+    <circle cx="200" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,38 56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,38 -56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="200" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,-38 56,-76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.8s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,-38 -56,-76"/>
+      </animateMotion>
+    </circle>
+  </g>
+  
+  <!-- 女性化装饰元素 -->
+  <g opacity="0.4">
+    <!-- 优雅的弧线装饰 -->
+    <path d="M 180,120 Q 256,140 332,120" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 180,392 Q 256,372 332,392" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 120,180 Q 140,256 120,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 392,180 Q 372,256 392,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- 中心标识 - P字母变形 -->
+  <g transform="translate(256,256)">
+    <path d="M -20,-30 L -20,30 M -20,-30 L 0,-30 Q 15,-30 15,-15 Q 15,0 0,0 L -20,0" 
+          stroke="rgba(255,255,255,0.9)" 
+          stroke-width="4" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+  </g>
+  
+  <!-- 外圈装饰点 -->
+  <g opacity="0.6">
+    <circle cx="256" cy="80" r="2" fill="url(#accentGradient)"/>
+    <circle cx="432" cy="256" r="2" fill="url(#accentGradient)"/>
+    <circle cx="256" cy="432" r="2" fill="url(#accentGradient)"/>
+    <circle cx="80" cy="256" r="2" fill="url(#accentGradient)"/>
+    
+    <circle cx="362" cy="150" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="362" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="150" r="1.5" fill="url(#accentGradient)"/>
+  </g>
+</svg>
+
+                </div>
+                <div class="icon-size">32x32</div>
+            </div>
+            <div class="icon-item">
+                <div style="width: 16px; height: 16px; margin: 0 auto;">
+                    <?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 渐变定义 -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 阴影滤镜 -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- 发光效果 -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="240" fill="url(#primaryGradient)" filter="url(#shadow)"/>
+  
+  <!-- 内部装饰圆环 -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  
+  <!-- 主要网络节点 - 中心 -->
+  <circle cx="256" cy="256" r="24" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="16" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="256" cy="256" r="8" fill="url(#accentGradient)"/>
+  
+  <!-- 周围网络节点 -->
+  <!-- 上方节点 -->
+  <circle cx="256" cy="160" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="160" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右上节点 -->
+  <circle cx="340" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右方节点 -->
+  <circle cx="380" cy="256" r="18" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="380" cy="256" r="12" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 右下节点 -->
+  <circle cx="340" cy="312" r="12" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="340" cy="312" r="6" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 下方节点 -->
+  <circle cx="256" cy="352" r="15" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="256" cy="352" r="9" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左下节点 -->
+  <circle cx="172" cy="312" r="13" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="312" r="7" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左方节点 -->
+  <circle cx="132" cy="256" r="16" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="132" cy="256" r="10" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 左上节点 -->
+  <circle cx="172" cy="200" r="14" fill="url(#nodeGradient)" filter="url(#glow)"/>
+  <circle cx="172" cy="200" r="8" fill="rgba(255,255,255,0.8)"/>
+  
+  <!-- 连接线 -->
+  <!-- 中心到各个节点的连接 -->
+  <line x1="256" y1="232" x2="256" y2="176" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="232" x2="324" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="256" x2="364" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="280" y1="280" x2="324" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="256" y1="280" x2="256" y2="336" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="280" x2="188" y2="296" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="256" x2="148" y2="256" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="232" y1="232" x2="188" y2="216" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- 节点间的连接线 -->
+  <line x1="256" y1="160" x2="324" y2="192" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="200" x2="364" y2="240" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="380" y1="256" x2="356" y2="296" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="340" y1="312" x2="272" y2="336" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="256" y1="352" x2="188" y2="328" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="312" x2="148" y2="272" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="132" y1="256" x2="156" y2="216" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="200" x2="240" y2="176" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- 数据流动效果 -->
+  <g opacity="0.8">
+    <!-- 流动的粒子 -->
+    <circle cx="200" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,38 56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="180" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,38 -56,76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="200" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="3.5s" repeatCount="indefinite">
+        <path d="M 0,0 Q 28,-38 56,-76"/>
+      </animateMotion>
+    </circle>
+    
+    <circle cx="312" cy="332" r="3" fill="url(#accentGradient)">
+      <animateMotion dur="2.8s" repeatCount="indefinite">
+        <path d="M 0,0 Q -28,-38 -56,-76"/>
+      </animateMotion>
+    </circle>
+  </g>
+  
+  <!-- 女性化装饰元素 -->
+  <g opacity="0.4">
+    <!-- 优雅的弧线装饰 -->
+    <path d="M 180,120 Q 256,140 332,120" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 180,392 Q 256,372 332,392" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 120,180 Q 140,256 120,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 392,180 Q 372,256 392,332" stroke="url(#accentGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- 中心标识 - P字母变形 -->
+  <g transform="translate(256,256)">
+    <path d="M -20,-30 L -20,30 M -20,-30 L 0,-30 Q 15,-30 15,-15 Q 15,0 0,0 L -20,0" 
+          stroke="rgba(255,255,255,0.9)" 
+          stroke-width="4" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+  </g>
+  
+  <!-- 外圈装饰点 -->
+  <g opacity="0.6">
+    <circle cx="256" cy="80" r="2" fill="url(#accentGradient)"/>
+    <circle cx="432" cy="256" r="2" fill="url(#accentGradient)"/>
+    <circle cx="256" cy="432" r="2" fill="url(#accentGradient)"/>
+    <circle cx="80" cy="256" r="2" fill="url(#accentGradient)"/>
+    
+    <circle cx="362" cy="150" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="362" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="362" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="150" cy="150" r="1.5" fill="url(#accentGradient)"/>
+  </g>
+</svg>
+
+                </div>
+                <div class="icon-size">16x16</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <h3>📋 如何生成PNG图标</h3>
+        <p>由于环境限制，请按以下步骤手动生成PNG图标：</p>
+        <ol>
+            <li>在浏览器中打开此HTML文件查看图标效果</li>
+            <li>使用在线SVG转PNG工具（如 <code>convertio.co</code> 或 <code>cloudconvert.com</code>）</li>
+            <li>上传 <code>build/icon.svg</code> 文件</li>
+            <li>生成以下尺寸的PNG文件：
+                <ul>
+                    <li>16x16, 32x32, 48x48, 64x64</li>
+                    <li>128x128, 256x256, 512x512, 1024x1024</li>
+                </ul>
+            </li>
+            <li>将生成的PNG文件保存到 <code>build/</code> 目录</li>
+            <li>将 <code>512x512</code> 的PNG重命名为 <code>appicon.png</code></li>
+        </ol>
+        
+        <h3>🔧 或者使用命令行工具</h3>
+        <p>如果你有ImageMagick或Inkscape，可以使用：</p>
+        <code>convert icon.svg -resize 512x512 appicon.png</code><br>
+        <code>inkscape icon.svg -w 512 -h 512 -o appicon.png</code>
+    </div>
+</body>
+</html>

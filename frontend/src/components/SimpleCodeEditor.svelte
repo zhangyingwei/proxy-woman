@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
 
   export let value: string = '';
   export let language: string = 'text';
@@ -10,6 +10,12 @@
   const dispatch = createEventDispatcher();
 
   let container: HTMLDivElement;
+  let isProcessing = false;
+  let renderTimeout: number;
+
+  // 性能配置
+  const MAX_HIGHLIGHT_SIZE = 50000; // 50KB以下才进行语法高亮
+  const MAX_RENDER_SIZE = 500000;   // 500KB以下才渲染，超过则截断
 
   // 语言到高亮类的映射
   const languageMap: Record<string, string> = {
@@ -158,9 +164,33 @@
     updateContent();
   });
 
-  // 响应式更新内容
+  onDestroy(() => {
+    if (renderTimeout) {
+      clearTimeout(renderTimeout);
+    }
+  });
+
+  // 响应式更新内容 - 添加防抖
   $: if (container) {
-    updateContent();
+    scheduleUpdate();
+  }
+
+  function scheduleUpdate() {
+    // 清除之前的更新任务
+    if (renderTimeout) {
+      clearTimeout(renderTimeout);
+    }
+
+    // 立即显示loading状态
+    if (container && value && value.length > MAX_HIGHLIGHT_SIZE) {
+      container.innerHTML = '<div class="loading-state">正在渲染内容...</div>';
+      isProcessing = true;
+    }
+
+    // 异步更新内容
+    renderTimeout = setTimeout(() => {
+      updateContent();
+    }, 10);
   }
 
   function updateContent() {
@@ -168,13 +198,48 @@
 
     if (!value || value.length === 0) {
       container.innerHTML = '<div class="empty-state">无内容</div>';
+      isProcessing = false;
       return;
     }
 
-    const detectedLang = detectLanguage('', language || '', value);
-    const highlighted = highlightCode(value, detectedLang);
+    // 检查内容大小，超大内容进行截断
+    let contentToRender = value;
+    let isTruncated = false;
 
-    container.innerHTML = `<pre><code class="${languageMap[detectedLang] || 'language-text'}">${highlighted}</code></pre>`;
+    if (value.length > MAX_RENDER_SIZE) {
+      contentToRender = value.substring(0, MAX_RENDER_SIZE);
+      isTruncated = true;
+    }
+
+    const detectedLang = detectLanguage('', language || '', contentToRender);
+
+    // 对于大内容，跳过语法高亮
+    let highlighted: string;
+    if (contentToRender.length > MAX_HIGHLIGHT_SIZE) {
+      // 转义HTML但不进行语法高亮
+      highlighted = contentToRender
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    } else {
+      highlighted = highlightCode(contentToRender, detectedLang);
+    }
+
+    // 使用requestAnimationFrame确保不阻塞UI
+    requestAnimationFrame(() => {
+      if (container) {
+        let content = `<pre><code class="${languageMap[detectedLang] || 'language-text'}">${highlighted}</code></pre>`;
+
+        if (isTruncated) {
+          content += `<div class="truncated-notice">内容过大，已截断显示前 ${MAX_RENDER_SIZE.toLocaleString()} 字符</div>`;
+        }
+
+        container.innerHTML = content;
+        isProcessing = false;
+      }
+    });
   }
 </script>
 
@@ -395,5 +460,45 @@
 
   .code-textarea::placeholder {
     color: #888;
+  }
+
+  /* Loading状态 */
+  .loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #888;
+    font-style: italic;
+    background-color: #1E1E1E;
+    border-radius: 4px;
+  }
+
+  .loading-state::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid #3E3E42;
+    border-top: 2px solid #007ACC;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* 截断提示 */
+  .truncated-notice {
+    background-color: #2D1B1B;
+    color: #FF6B6B;
+    padding: 8px 12px;
+    margin-top: 8px;
+    border-radius: 4px;
+    border-left: 4px solid #FF6B6B;
+    font-size: 12px;
+    font-style: italic;
   }
 </style>

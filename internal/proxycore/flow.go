@@ -1,6 +1,7 @@
 package proxycore
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -51,11 +52,17 @@ type FlowRequest struct {
 
 // FlowResponse 表示HTTP响应
 type FlowResponse struct {
-	StatusCode int               `json:"statusCode"`
-	Status     string            `json:"status"`
-	Headers    map[string]string `json:"headers"`
-	Body       []byte            `json:"body"`
-	Raw        string            `json:"raw"`
+	StatusCode    int               `json:"statusCode"`
+	Status        string            `json:"status"`
+	Headers       map[string]string `json:"headers"`
+	Body          []byte            `json:"body"`          // 原始响应体
+	DecodedBody   []byte            `json:"decodedBody"`   // 解码后的响应体
+	HexView       string            `json:"hexView"`       // 16进制视图
+	IsText        bool              `json:"isText"`        // 是否为文本内容
+	IsBinary      bool              `json:"isBinary"`      // 是否为二进制内容
+	ContentType   string            `json:"contentType"`   // 内容类型
+	Encoding      string            `json:"encoding"`      // 编码方式
+	Raw           string            `json:"raw"`
 }
 
 // NewFlow 创建新的Flow对象
@@ -121,6 +128,13 @@ func (f *Flow) SetResponse(resp *http.Response, body []byte) {
 	// 更新内容类型（如果响应中有）
 	if contentType := resp.Header.Get("Content-Type"); contentType != "" && f.ContentType == "" {
 		f.ContentType = contentType
+	}
+
+	// 自动解码响应体
+	decoder := NewResponseDecoder()
+	if err := decoder.DecodeResponse(f.Response); err != nil {
+		// 解码失败，记录错误但不影响正常流程
+		fmt.Printf("Failed to decode response for %s: %v\n", f.URL, err)
 	}
 }
 

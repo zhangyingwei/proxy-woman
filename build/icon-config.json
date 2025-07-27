@@ -1,0 +1,80 @@
+{
+  "name": "ProxyWoman",
+  "description": "A modern network proxy analysis tool with elegant design",
+  "source": "icon.svg",
+  "sizes": [
+    16,
+    32,
+    48,
+    64,
+    128,
+    256,
+    512,
+    1024
+  ],
+  "formats": [
+    "png",
+    "ico"
+  ],
+  "platforms": {
+    "windows": {
+      "ico": [
+        16,
+        24,
+        32,
+        48,
+        64,
+        128,
+        256
+      ],
+      "png": [
+        16,
+        32,
+        48,
+        64,
+        128,
+        256,
+        512
+      ]
+    },
+    "macos": {
+      "png": [
+        16,
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ],
+      "icns": true
+    },
+    "linux": {
+      "png": [
+        16,
+        32,
+        48,
+        64,
+        128,
+        256,
+        512
+      ],
+      "svg": true
+    }
+  },
+  "design": {
+    "theme": "Network proxy with feminine elegance",
+    "colors": {
+      "primary": "#667eea to #764ba2",
+      "accent": "#f093fb to #f5576c",
+      "nodes": "#4facfe to #00f2fe"
+    },
+    "elements": [
+      "Central proxy node",
+      "Network connections",
+      "Data flow animation",
+      "Elegant curves",
+      "Modern gradients"
+    ]
+  }
+}

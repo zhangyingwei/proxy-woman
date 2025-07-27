@@ -314,6 +314,15 @@ func (ps *ProxyServer) GetFlows() []*Flow {
 	return flows
 }
 
+// GetFlow 根据ID获取单个Flow
+func (ps *ProxyServer) GetFlow(flowID string) (*Flow, bool) {
+	ps.flowsMutex.RLock()
+	defer ps.flowsMutex.RUnlock()
+
+	flow, exists := ps.flows[flowID]
+	return flow, exists
+}
+
 // ClearFlows 清空所有Flow
 func (ps *ProxyServer) ClearFlows() {
 	ps.flowsMutex.Lock()
