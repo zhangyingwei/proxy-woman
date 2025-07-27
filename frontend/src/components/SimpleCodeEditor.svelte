@@ -10,20 +10,11 @@
   const dispatch = createEventDispatcher();
 
   let container: HTMLDivElement;
-  let isProcessing = false;
   let renderTimeout: number;
 
-  // 性能配置 - 更激进的限制确保5秒内完成
+  // 性能配置
   const MAX_RENDER_SIZE = 500000;    // 500KB以下才渲染，超过则截断
-  const LARGE_CONTENT_THRESHOLD = 50000;  // 50KB以上显示loading
-  const CHUNK_SIZE = 100000;         // 100KB分块处理
-  const MAX_PROCESSING_TIME = 5000;  // 最大处理时间5秒
-
-
-
-  // 移除语言检测，纯文本展示
-
-  // 移除HTML转义，直接显示原始内容以获得最佳性能
+  const LARGE_CONTENT_THRESHOLD = 50000;  // 50KB以上显示性能提示
 
   onMount(() => {
     updateContent();
@@ -46,16 +37,7 @@
       clearTimeout(renderTimeout);
     }
 
-    // 根据内容大小决定是否显示loading状态
-    if (container && value && value.length > LARGE_CONTENT_THRESHOLD) {
-      container.innerHTML = '<div class="loading-state">正在渲染内容... (最长5秒)</div>';
-      isProcessing = true;
-    }
-
-    // 立即开始处理，不延迟
-    // renderTimeout = setTimeout(() => {
-    //   updateContent();
-    // }, 1);
+    // 立即开始处理
     updateContent();
   }
 
@@ -64,7 +46,6 @@
 
     if (!value || value.length === 0) {
       container.innerHTML = '<div class="empty-state">无内容</div>';
-      isProcessing = false;
       return;
     }
 
@@ -77,15 +58,8 @@
       isTruncated = true;
     }
 
-    const startTime = Date.now();
-
-    // 分块处理大内容
-    if (contentToRender.length > CHUNK_SIZE) {
-      processContentInChunks(contentToRender, isTruncated, startTime);
-    } else {
-      // 小内容直接处理
-      processContentDirectly(contentToRender, isTruncated);
-    }
+    // 直接处理内容
+    processContentDirectly(contentToRender, isTruncated);
   }
 
   // 直接处理小内容
@@ -93,25 +67,10 @@
     renderContent(content, content.length, isTruncated);
   }
 
-  // 分块处理大内容 - 直接使用原始内容，无需转义
-  function processContentInChunks(content: string, isTruncated: boolean, startTime: number) {
-    // 由于移除了转义处理，大内容可以直接渲染
-    // 但仍保持超时检查以确保5秒内完成
-    const currentTime = Date.now();
 
-    if (currentTime - startTime > MAX_PROCESSING_TIME) {
-      // 超时则截断内容
-      const truncatedContent = content.substring(0, CHUNK_SIZE);
-      renderContent(truncatedContent, content.length, true, true);
-      return;
-    }
-
-    // 直接渲染完整内容
-    renderContent(content, content.length, isTruncated);
-  }
 
   // 渲染最终内容 - 使用textContent直接显示原始内容
-  function renderContent(rawContent: string, originalLength: number, isTruncated: boolean, isTimeout: boolean = false) {
+  function renderContent(rawContent: string, originalLength: number, isTruncated: boolean) {
     requestAnimationFrame(() => {
       if (container) {
         // 清空容器
@@ -131,19 +90,12 @@
           container.appendChild(notice);
         }
 
-        if (isTimeout) {
-          const notice = document.createElement('div');
-          notice.className = 'truncated-notice';
-          notice.textContent = '内容处理超时（5秒），已截断显示以确保响应性能';
-          container.appendChild(notice);
-        } else if (isTruncated) {
+        if (isTruncated) {
           const notice = document.createElement('div');
           notice.className = 'truncated-notice';
           notice.textContent = `内容过大，已截断显示前 ${MAX_RENDER_SIZE.toLocaleString()} 字符`;
           container.appendChild(notice);
         }
-
-        isProcessing = false;
       }
     });
   }
@@ -238,101 +190,7 @@
     width: 100%;
   }
 
-  /* JSON语法高亮 */
-  .code-editor :global(.json-key) {
-    color: #9CDCFE;
-  }
 
-  .code-editor :global(.json-string) {
-    color: #CE9178;
-  }
-
-  .code-editor :global(.json-number) {
-    color: #B5CEA8;
-  }
-
-  .code-editor :global(.json-boolean) {
-    color: #569CD6;
-  }
-
-  /* HTML语法高亮 */
-  .code-editor :global(.html-tag) {
-    color: #569CD6;
-  }
-
-  .code-editor :global(.html-attr) {
-    color: #9CDCFE;
-  }
-
-  .code-editor :global(.html-value) {
-    color: #CE9178;
-  }
-
-  /* CSS语法高亮 */
-  .code-editor :global(.css-selector) {
-    color: #D7BA7D;
-  }
-
-  .code-editor :global(.css-property) {
-    color: #9CDCFE;
-  }
-
-  .code-editor :global(.css-value) {
-    color: #CE9178;
-  }
-
-  .code-editor :global(.css-comment) {
-    color: #6A9955;
-    font-style: italic;
-  }
-
-  .code-editor :global(.css-at-rule) {
-    color: #C586C0;
-  }
-
-  /* JavaScript语法高亮 */
-  .code-editor :global(.js-keyword) {
-    color: #569CD6;
-  }
-
-  .code-editor :global(.js-string) {
-    color: #CE9178;
-  }
-
-  .code-editor :global(.js-number) {
-    color: #B5CEA8;
-  }
-
-  .code-editor :global(.js-comment) {
-    color: #6A9955;
-    font-style: italic;
-  }
-
-  .code-editor :global(.js-builtin) {
-    color: #4EC9B0;
-  }
-
-  /* XML语法高亮 */
-  .code-editor :global(.xml-tag) {
-    color: #569CD6;
-  }
-
-  .code-editor :global(.xml-attr) {
-    color: #9CDCFE;
-  }
-
-  .code-editor :global(.xml-value) {
-    color: #CE9178;
-  }
-
-  .code-editor :global(.xml-comment) {
-    color: #6A9955;
-    font-style: italic;
-  }
-
-  .code-editor :global(.xml-declaration) {
-    color: #C586C0;
-  }
 
   /* 滚动条样式 */
   .code-editor::-webkit-scrollbar {
@@ -386,33 +244,7 @@
     color: #888;
   }
 
-  /* Loading状态 */
-  .loading-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-    color: #888;
-    font-style: italic;
-    background-color: #1E1E1E;
-    border-radius: 4px;
-  }
 
-  .loading-state::before {
-    content: '';
-    width: 16px;
-    height: 16px;
-    border: 2px solid #3E3E42;
-    border-top: 2px solid #007ACC;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 8px;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
 
   /* 截断提示 */
   .truncated-notice {
