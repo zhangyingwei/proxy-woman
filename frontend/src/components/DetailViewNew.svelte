@@ -718,7 +718,7 @@
                           <SimpleCodeEditor
                             value={$selectedFlow.response.base64Content}
                             language="text"
-                            height="120px"
+                            height="auto"
                           />
                         </div>
                       </div>

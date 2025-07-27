@@ -4,12 +4,23 @@
   import { getAppIcon } from '../utils/appIcons';
   import type { Flow } from '../stores/flowStore';
 
+  // URI树节点
+  interface UriTreeNode {
+    name: string;
+    fullPath: string;
+    children: Map<string, UriTreeNode>;
+    flows: Flow[];
+    expanded: boolean;
+    isLeaf: boolean;
+  }
+
   // 域名分组数据
   interface DomainGroup {
     domain: string;
     count: number;
     flows: Flow[];
     expanded: boolean;
+    uriTree: UriTreeNode;
   }
 
   interface AppGroup {
@@ -27,6 +38,7 @@
   let appGroups: AppGroup[] = [];
   let expandedDomains = new Set<string>();
   let expandedApps = new Set<string>();
+  let expandedUriNodes = new Set<string>(); // 用于跟踪展开的URI节点
   let groupType: GroupType = 'domain';
 
   // 获取流量的序号（基于时间戳排序）
@@ -39,6 +51,59 @@
   let lastFlowsLength = 0;
   let lastFlowsHash = '';
 
+  // 构建URI树
+  function buildUriTree(flows: Flow[]): UriTreeNode {
+    const root: UriTreeNode = {
+      name: '',
+      fullPath: '',
+      children: new Map(),
+      flows: [],
+      expanded: false,
+      isLeaf: false
+    };
+
+    flows.forEach(flow => {
+      const path = flow.path || '/';
+      const segments = path.split('/').filter(segment => segment.length > 0);
+
+      let currentNode = root;
+      let currentPath = '';
+
+      // 如果路径为根路径，直接添加到根节点
+      if (segments.length === 0) {
+        currentNode.flows.push(flow);
+        return;
+      }
+
+      // 遍历路径段，构建树结构
+      segments.forEach((segment, index) => {
+        currentPath += '/' + segment;
+        const nodeKey = `${flow.domain}${currentPath}`;
+
+        if (!currentNode.children.has(segment)) {
+          currentNode.children.set(segment, {
+            name: segment,
+            fullPath: currentPath,
+            children: new Map(),
+            flows: [],
+            expanded: expandedUriNodes.has(nodeKey),
+            isLeaf: index === segments.length - 1
+          });
+        }
+
+        currentNode = currentNode.children.get(segment)!;
+
+        // 如果是叶子节点，添加flow
+        if (index === segments.length - 1) {
+          currentNode.flows.push(flow);
+          currentNode.isLeaf = true;
+        }
+      });
+    });
+
+    return root;
+  }
+
   // 响应式更新分组
   $: {
     if (groupType === 'domain') {
@@ -50,7 +115,7 @@
 
   function updateDomainGroups(flows: Flow[]) {
     // 简单的缓存检查
-    const currentHash = flows.map(f => `${f.id}-${f.domain}`).join(',');
+    const currentHash = flows.map(f => `${f.id}-${f.domain}-${f.path}`).join(',');
     if (flows.length === lastFlowsLength && currentHash === lastFlowsHash) {
       return;
     }
@@ -72,7 +137,8 @@
       domain,
       count: flows.length,
       flows,
-      expanded: expandedDomains.has(domain)
+      expanded: expandedDomains.has(domain),
+      uriTree: buildUriTree(flows)
     })).sort((a, b) => b.count - a.count);
   }
 
@@ -129,6 +195,29 @@
         expandedDomains.delete(domain);
       }
     }
+  }
+
+  // 切换URI节点展开状态
+  function toggleUriNode(domain: string, fullPath: string) {
+    const nodeKey = `${domain}${fullPath}`;
+    if (expandedUriNodes.has(nodeKey)) {
+      expandedUriNodes.delete(nodeKey);
+    } else {
+      expandedUriNodes.add(nodeKey);
+    }
+    expandedUriNodes = expandedUriNodes; // 触发响应式更新
+
+    // 重新构建域名组以更新URI树状态
+    updateDomainGroups($filteredFlows);
+  }
+
+  // 获取URI树节点的所有flows（包括子节点的flows）
+  function getAllFlowsFromNode(node: UriTreeNode): Flow[] {
+    let allFlows = [...node.flows];
+    for (const child of node.children.values()) {
+      allFlows = allFlows.concat(getAllFlowsFromNode(child));
+    }
+    return allFlows;
   }
 
   function toggleApp(appName: string, appCategory: string) {
@@ -225,33 +314,89 @@
           
           {#if group.expanded}
             <div class="domain-flows">
-              {#each group.flows.slice(0, 10) as flow (flow.id)}
+              <!-- 渲染根路径的flows -->
+              {#each group.uriTree.flows as flow (flow.id)}
                 <div
                   class="flow-item"
                   on:click={() => selectFlow(flow)}
                   on:keydown={(e) => e.key === 'Enter' && selectFlow(flow)}
                   tabindex="0"
                 >
-                  <div class="flow-id">#{getFlowIndex(flow)}</div>
-                  <div class="flow-method" style="color: {getMethodColor(flow.method)}">
-                    {flow.method}
-                  </div>
                   <div class="flow-url" title={flow.url}>
-                    {flow.path || '/'}
-                  </div>
-                  <div
-                    class="flow-status"
-                    style="color: {getStatusColor(flow.statusCode)}"
-                  >
-                    {flow.statusCode || '-'}
+                    /
                   </div>
                 </div>
               {/each}
-              {#if group.flows.length > 10}
-                <div class="more-flows">
-                  还有 {group.flows.length - 10} 个请求...
-                </div>
-              {/if}
+
+              <!-- 渲染URI树 -->
+              {#each Array.from(group.uriTree.children.entries()) as [segment, node] (segment)}
+                {#if node.children.size > 0 || node.flows.length > 0}
+                  <div class="uri-node" style="margin-left: 0px;">
+                    <div
+                      class="uri-node-header"
+                      on:click={() => toggleUriNode(group.domain, node.fullPath)}
+                      on:keydown={(e) => e.key === 'Enter' && toggleUriNode(group.domain, node.fullPath)}
+                      tabindex="0"
+                    >
+                      <span class="uri-expand-icon">
+                        {node.expanded ? '▼' : '▶'}
+                      </span>
+                      <span class="uri-segment">{node.name}</span>
+                    </div>
+
+                    {#if node.expanded}
+                      <!-- 渲染当前节点的flows -->
+                      {#each node.flows as flow (flow.id)}
+                        <div
+                          class="flow-item uri-flow"
+                          on:click={() => selectFlow(flow)}
+                          on:keydown={(e) => e.key === 'Enter' && selectFlow(flow)}
+                          tabindex="0"
+                          style="margin-left: 20px;"
+                        >
+                          <div class="flow-url" title={flow.url}>
+                            {node.fullPath}
+                          </div>
+                        </div>
+                      {/each}
+
+                      <!-- 递归渲染子节点 -->
+                      {#each Array.from(node.children.entries()) as [childSegment, childNode] (childSegment)}
+                        <!-- 这里需要递归，暂时简化处理 -->
+                        <div class="uri-node" style="margin-left: 20px;">
+                          <div
+                            class="uri-node-header"
+                            on:click={() => toggleUriNode(group.domain, childNode.fullPath)}
+                            on:keydown={(e) => e.key === 'Enter' && toggleUriNode(group.domain, childNode.fullPath)}
+                            tabindex="0"
+                          >
+                            <span class="uri-expand-icon">
+                              {childNode.expanded ? '▼' : '▶'}
+                            </span>
+                            <span class="uri-segment">{childNode.name}</span>
+                          </div>
+
+                          {#if childNode.expanded}
+                            {#each childNode.flows as flow (flow.id)}
+                              <div
+                                class="flow-item uri-flow"
+                                on:click={() => selectFlow(flow)}
+                                on:keydown={(e) => e.key === 'Enter' && selectFlow(flow)}
+                                tabindex="0"
+                                style="margin-left: 40px;"
+                              >
+                                <div class="flow-url" title={flow.url}>
+                                  {childNode.fullPath}
+                                </div>
+                              </div>
+                            {/each}
+                          {/if}
+                        </div>
+                      {/each}
+                    {/if}
+                  </div>
+                {/if}
+              {/each}
             </div>
           {/if}
         </div>
@@ -292,7 +437,7 @@
 
             {#if group.expanded}
               <div class="app-flows">
-                {#each group.flows.slice(0, 10) as flow (flow.id)}
+                {#each group.flows as flow (flow.id)}
                   <div
                     class="flow-item"
                     on:click={() => selectFlow(flow)}
@@ -314,11 +459,6 @@
                     </div>
                   </div>
                 {/each}
-                {#if group.flows.length > 10}
-                  <div class="more-flows">
-                    还有 {group.flows.length - 10} 个请求...
-                  </div>
-                {/if}
               </div>
             {/if}
           </div>
@@ -444,9 +584,7 @@
     background-color: #2A2D2E;
   }
 
-  .flow-item.pinned {
-    background-color: #2D2D30;
-  }
+
 
   .flow-method {
     font-size: 9px;
@@ -469,12 +607,7 @@
     text-align: right;
   }
 
-  .more-flows {
-    padding: 4px 12px;
-    font-size: 10px;
-    color: #888;
-    font-style: italic;
-  }
+
 
   /* 分组类型切换器 */
   .group-type-switcher {
@@ -502,6 +635,49 @@
   .group-type-btn.active {
     background-color: #007ACC;
     color: white;
+  }
+
+  /* URI树节点样式 */
+  .uri-node {
+    margin-bottom: 2px;
+  }
+
+  .uri-node-header {
+    display: flex;
+    align-items: center;
+    padding: 2px 8px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background-color 0.1s ease;
+    font-size: 11px;
+  }
+
+  .uri-node-header:hover {
+    background-color: #2A2D2E;
+  }
+
+  .uri-expand-icon {
+    width: 12px;
+    font-size: 8px;
+    color: #888;
+    margin-right: 4px;
+    text-align: center;
+  }
+
+  .uri-segment {
+    color: #CCCCCC;
+    font-weight: 500;
+  }
+
+  .uri-flow {
+    font-size: 10px;
+    padding: 2px 8px;
+    margin-bottom: 1px;
+  }
+
+  .uri-flow .flow-url {
+    color: #9CDCFE;
+    font-size: 10px;
   }
 
   /* 应用分组样式 */
