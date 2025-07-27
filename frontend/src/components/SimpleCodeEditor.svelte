@@ -14,150 +14,35 @@
   let renderTimeout: number;
 
   // 性能配置
-  const MAX_HIGHLIGHT_SIZE = 50000; // 50KB以下才进行语法高亮
-  const MAX_RENDER_SIZE = 500000;   // 500KB以下才渲染，超过则截断
+  const MAX_RENDER_SIZE = 1000000;  // 1MB以下才渲染，超过则截断
+  const LARGE_CONTENT_THRESHOLD = 100000; // 100KB以上显示loading
 
-  // 语言到高亮类的映射
-  const languageMap: Record<string, string> = {
-    'json': 'language-json',
-    'javascript': 'language-javascript',
-    'html': 'language-html',
-    'css': 'language-css',
-    'xml': 'language-xml',
-    'text': 'language-text'
-  };
 
-  // 检测语言类型
-  function detectLanguage(url: string, contentType: string, content: string): string {
-    // 如果明确指定了language参数，优先使用
-    if (language && language !== 'auto') {
-      return normalizeLanguage(language);
-    }
 
-    // 根据Content-Type判断
-    if (contentType) {
-      const lowerType = contentType.toLowerCase();
-      if (lowerType.includes('json') || lowerType.includes('application/json')) return 'json';
-      if (lowerType.includes('javascript') || lowerType.includes('application/javascript') ||
-          lowerType.includes('text/javascript') || lowerType.includes('application/x-javascript')) return 'javascript';
-      if (lowerType.includes('html') || lowerType.includes('text/html') ||
-          lowerType.includes('application/xhtml')) return 'html';
-      if (lowerType.includes('css') || lowerType.includes('text/css')) return 'css';
-      if (lowerType.includes('xml') || lowerType.includes('application/xml') ||
-          lowerType.includes('text/xml')) return 'xml';
-    }
+  // 简化的语言检测（仅用于CSS类名）
+  function getLanguageClass(): string {
+    if (!language || language === 'auto') return 'language-text';
 
-    // 根据URL扩展名判断
-    const urlLower = url.toLowerCase();
-    if (urlLower.includes('.js') || urlLower.includes('.mjs') || urlLower.includes('.jsx')) return 'javascript';
-    if (urlLower.includes('.json')) return 'json';
-    if (urlLower.includes('.css') || urlLower.includes('.scss') || urlLower.includes('.sass') || urlLower.includes('.less')) return 'css';
-    if (urlLower.includes('.html') || urlLower.includes('.htm') || urlLower.includes('.xhtml')) return 'html';
-    if (urlLower.includes('.xml') || urlLower.includes('.xsl') || urlLower.includes('.xsd')) return 'xml';
+    const lowerLang = language.toLowerCase();
+    if (lowerLang.includes('json')) return 'language-json';
+    if (lowerLang.includes('javascript') || lowerLang.includes('js')) return 'language-javascript';
+    if (lowerLang.includes('html')) return 'language-html';
+    if (lowerLang.includes('css')) return 'language-css';
+    if (lowerLang.includes('xml')) return 'language-xml';
 
-    // 根据内容判断
-    if (content) {
-      const trimmed = content.trim();
-      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        try {
-          JSON.parse(trimmed);
-          return 'json';
-        } catch {}
-      }
-      if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') ||
-          trimmed.includes('<html>') || trimmed.includes('<HTML>')) return 'html';
-      if (trimmed.startsWith('<?xml') || trimmed.includes('<?xml')) return 'xml';
-
-      // CSS检测
-      if (trimmed.includes('{') && trimmed.includes('}') &&
-          (trimmed.includes(':') || trimmed.includes('@'))) {
-        // 简单的CSS检测：包含选择器和属性
-        if (/[a-zA-Z-]+\s*:\s*[^;]+;/.test(trimmed) ||
-            /@[a-zA-Z-]+/.test(trimmed) ||
-            /\.[a-zA-Z-]+\s*{/.test(trimmed)) {
-          return 'css';
-        }
-      }
-
-      // JavaScript检测
-      if (trimmed.includes('function') || trimmed.includes('var ') ||
-          trimmed.includes('let ') || trimmed.includes('const ') ||
-          trimmed.includes('=>') || trimmed.includes('console.') ||
-          trimmed.includes('document.') || trimmed.includes('window.')) {
-        return 'javascript';
-      }
-    }
-
-    return 'text';
+    return 'language-text';
   }
 
-  // 标准化语言名称
-  function normalizeLanguage(lang: string): string {
-    const lowerLang = lang.toLowerCase();
-    if (lowerLang.includes('json')) return 'json';
-    if (lowerLang.includes('javascript') || lowerLang.includes('js')) return 'javascript';
-    if (lowerLang.includes('html')) return 'html';
-    if (lowerLang.includes('css')) return 'css';
-    if (lowerLang.includes('xml')) return 'xml';
-    return 'text';
-  }
-
-  // 简单的语法高亮
-  function highlightCode(code: string, lang: string): string {
+  // 简单的HTML转义函数（移除语法高亮以提升性能）
+  function escapeHtml(code: string): string {
     if (!code) return '';
 
-    // 转义HTML字符
-    const escaped = code
+    return code
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
-
-    if (lang === 'json') {
-      return escaped
-        .replace(/(".*?")\s*:/g, '<span class="json-key">$1</span>:')
-        .replace(/:\s*(".*?")/g, ': <span class="json-string">$1</span>')
-        .replace(/:\s*(\d+\.?\d*)/g, ': <span class="json-number">$1</span>')
-        .replace(/:\s*(true|false|null)/g, ': <span class="json-boolean">$1</span>');
-    }
-
-    if (lang === 'html') {
-      return escaped
-        .replace(/(&lt;\/?[^&gt;]+&gt;)/g, '<span class="html-tag">$1</span>')
-        .replace(/(\w+)=/g, '<span class="html-attr">$1</span>=')
-        .replace(/=(".*?")/g, '=<span class="html-value">$1</span>');
-    }
-
-    if (lang === 'css') {
-      return escaped
-        .replace(/(\/\*.*?\*\/)/gs, '<span class="css-comment">$1</span>')
-        .replace(/([a-zA-Z-]+)\s*:/g, '<span class="css-property">$1</span>:')
-        .replace(/:\s*([^;]+);/g, ': <span class="css-value">$1</span>;')
-        .replace(/([.#]?[a-zA-Z-_][a-zA-Z0-9-_]*)\s*{/g, '<span class="css-selector">$1</span> {')
-        .replace(/(@[a-zA-Z-]+)/g, '<span class="css-at-rule">$1</span>');
-    }
-
-    if (lang === 'javascript') {
-      return escaped
-        .replace(/(\/\/.*$)/gm, '<span class="js-comment">$1</span>')
-        .replace(/(\/\*.*?\*\/)/gs, '<span class="js-comment">$1</span>')
-        .replace(/\b(function|var|let|const|if|else|for|while|return|true|false|null|undefined)\b/g, '<span class="js-keyword">$1</span>')
-        .replace(/\b(console|document|window|Array|Object|String|Number|Boolean)\b/g, '<span class="js-builtin">$1</span>')
-        .replace(/(".*?"|'.*?'|`.*?`)/g, '<span class="js-string">$1</span>')
-        .replace(/\b(\d+\.?\d*)\b/g, '<span class="js-number">$1</span>');
-    }
-
-    if (lang === 'xml') {
-      return escaped
-        .replace(/(&lt;\?.*?\?&gt;)/g, '<span class="xml-declaration">$1</span>')
-        .replace(/(&lt;!--.*?--&gt;)/gs, '<span class="xml-comment">$1</span>')
-        .replace(/(&lt;\/?[^&gt;]+&gt;)/g, '<span class="xml-tag">$1</span>')
-        .replace(/(\w+)=/g, '<span class="xml-attr">$1</span>=')
-        .replace(/=(".*?")/g, '=<span class="xml-value">$1</span>');
-    }
-
-    return escaped;
   }
 
   onMount(() => {
@@ -181,16 +66,20 @@
       clearTimeout(renderTimeout);
     }
 
-    // 立即显示loading状态
-    if (container && value && value.length > MAX_HIGHLIGHT_SIZE) {
+    // 根据内容大小决定是否显示loading状态
+    if (container && value && value.length > LARGE_CONTENT_THRESHOLD) {
       container.innerHTML = '<div class="loading-state">正在渲染内容...</div>';
       isProcessing = true;
     }
 
+    // 根据内容大小调整延迟时间，大内容使用更长延迟确保UI响应
+    const delay = value && value.length > 500000 ? 100 :
+                  value && value.length > 100000 ? 50 : 10;
+
     // 异步更新内容
     renderTimeout = setTimeout(() => {
       updateContent();
-    }, 10);
+    }, delay);
   }
 
   function updateContent() {
@@ -211,26 +100,20 @@
       isTruncated = true;
     }
 
-    const detectedLang = detectLanguage('', language || '', contentToRender);
+    const languageClass = getLanguageClass();
 
-    // 对于大内容，跳过语法高亮
-    let highlighted: string;
-    if (contentToRender.length > MAX_HIGHLIGHT_SIZE) {
-      // 转义HTML但不进行语法高亮
-      highlighted = contentToRender
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    } else {
-      highlighted = highlightCode(contentToRender, detectedLang);
-    }
+    // 直接转义HTML，不进行语法高亮（提升性能）
+    const escaped = escapeHtml(contentToRender);
 
     // 使用requestAnimationFrame确保不阻塞UI
     requestAnimationFrame(() => {
       if (container) {
-        let content = `<pre><code class="${languageMap[detectedLang] || 'language-text'}">${highlighted}</code></pre>`;
+        let content = `<pre><code class="${languageClass}">${escaped}</code></pre>`;
+
+        // 添加性能提示（已移除语法高亮）
+        if (contentToRender.length > LARGE_CONTENT_THRESHOLD) {
+          content += `<div class="performance-notice">内容较大 (${(contentToRender.length / 1024).toFixed(1)}KB)，已优化渲染性能</div>`;
+        }
 
         if (isTruncated) {
           content += `<div class="truncated-notice">内容过大，已截断显示前 ${MAX_RENDER_SIZE.toLocaleString()} 字符</div>`;
@@ -498,6 +381,18 @@
     margin-top: 8px;
     border-radius: 4px;
     border-left: 4px solid #FF6B6B;
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* 性能提示 */
+  .performance-notice {
+    background-color: #1B2D1B;
+    color: #6BB66B;
+    padding: 8px 12px;
+    margin-top: 8px;
+    border-radius: 4px;
+    border-left: 4px solid #6BB66B;
     font-size: 12px;
     font-style: italic;
   }
