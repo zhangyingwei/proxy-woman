@@ -5,18 +5,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dop251/goja"
 	"ProxyWoman/internal/proxycore"
+
+	"github.com/dop251/goja"
 )
 
 // Script 脚本结构
 type Script struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Content     string `json:"content"`
-	Enabled     bool   `json:"enabled"`
-	Type        string `json:"type"` // "request", "response", "both"
-	Description string `json:"description"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Content     string    `json:"content"`
+	Enabled     bool      `json:"enabled"`
+	Type        string    `json:"type"` // "request", "response", "both"
+	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
@@ -71,10 +72,10 @@ type ScriptStorage interface {
 
 // ScriptManager 脚本管理器
 type ScriptManager struct {
-	scripts     map[string]*Script
+	scripts      map[string]*Script
 	scriptsMutex sync.RWMutex
-	vm          *goja.Runtime
-	storage     ScriptStorage
+	vm           *goja.Runtime
+	storage      ScriptStorage
 }
 
 // NewScriptManager 创建脚本管理器
@@ -202,7 +203,7 @@ func (sm *ScriptManager) GetScript(scriptID string) (*Script, bool) {
 func (sm *ScriptManager) GetAllScripts() []*Script {
 	sm.scriptsMutex.RLock()
 	defer sm.scriptsMutex.RUnlock()
-	
+
 	scripts := make([]*Script, 0, len(sm.scripts))
 	for _, script := range sm.scripts {
 		scripts = append(scripts, script)
@@ -345,14 +346,14 @@ func (sm *ScriptManager) ExecuteResponseScripts(flow *proxycore.Flow) error {
 func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, phase string) ([]string, error) {
 	// 创建新的VM实例以避免状态污染
 	vm := goja.New()
-	
+
 	// 创建脚本上下文
 	console := &ScriptConsole{logs: make([]string, 0)}
 	context := &ScriptContext{
 		Flow:    flow,
 		Console: console,
 	}
-	
+
 	// 设置请求对象
 	if flow.Request != nil {
 		context.Request = &ScriptRequest{
@@ -362,7 +363,7 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 			Body:    string(flow.Request.Body),
 		}
 	}
-	
+
 	// 设置响应对象（如果存在）
 	if flow.Response != nil {
 		context.Response = &ScriptResponse{
@@ -372,13 +373,16 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 			Body:       string(flow.Response.Body),
 		}
 	}
-	
+
 	// 将上下文对象注入到VM中
 	vm.Set("flow", context.Flow)
 	vm.Set("request", context.Request)
 	vm.Set("response", context.Response)
 	vm.Set("console", console)
-	
+
+	// 创建完整的context对象供脚本使用
+	vm.Set("context", context)
+
 	// 添加一些实用函数
 	vm.Set("setTimeout", func(callback func(), delay int) {
 		go func() {
@@ -386,16 +390,93 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 			callback()
 		}()
 	})
-	
+
 	// 执行脚本
 	_, err := vm.RunString(script.Content)
 	if err != nil {
 		return console.GetLogs(), fmt.Errorf("script execution failed: %v", err)
 	}
-	
+
+	// 检查并调用特定的生命周期函数
+	if phase == "request" {
+		if onRequestFunc := vm.Get("onRequest"); onRequestFunc != nil {
+			if callable, ok := goja.AssertFunction(onRequestFunc); ok {
+				_, err := callable(goja.Undefined(), vm.ToValue(context))
+				if err != nil {
+					console.Log(fmt.Sprintf("onRequest function error: %v", err))
+				}
+			}
+		}
+	} else if phase == "response" {
+		if onResponseFunc := vm.Get("onResponse"); onResponseFunc != nil {
+			if callable, ok := goja.AssertFunction(onResponseFunc); ok {
+				_, err := callable(goja.Undefined(), vm.ToValue(context))
+				if err != nil {
+					console.Log(fmt.Sprintf("onResponse function error: %v", err))
+				}
+			}
+		}
+	}
+
 	// 获取修改后的值并应用到Flow
+	// 从context对象中获取修改后的值
+	if contextVal := vm.Get("context"); contextVal != nil {
+		if contextObj := contextVal.Export(); contextObj != nil {
+			// 尝试将导出的对象转换为map，然后提取修改后的值
+			if contextMap, ok := contextObj.(map[string]interface{}); ok {
+				// 应用请求修改
+				if requestVal, exists := contextMap["request"]; exists && flow.Request != nil {
+					if requestMap, ok := requestVal.(map[string]interface{}); ok {
+						if method, ok := requestMap["method"].(string); ok {
+							flow.Request.Method = method
+						}
+						if url, ok := requestMap["url"].(string); ok {
+							flow.Request.URL = url
+						}
+						if headers, ok := requestMap["headers"].(map[string]interface{}); ok {
+							headerMap := make(map[string]string)
+							for k, v := range headers {
+								if strVal, ok := v.(string); ok {
+									headerMap[k] = strVal
+								}
+							}
+							flow.Request.Headers = headerMap
+						}
+						if body, ok := requestMap["body"].(string); ok {
+							flow.Request.Body = []byte(body)
+						}
+					}
+				}
+
+				// 应用响应修改
+				if responseVal, exists := contextMap["response"]; exists && flow.Response != nil {
+					if responseMap, ok := responseVal.(map[string]interface{}); ok {
+						if statusCode, ok := responseMap["statusCode"].(int); ok {
+							flow.Response.StatusCode = statusCode
+						}
+						if status, ok := responseMap["status"].(string); ok {
+							flow.Response.Status = status
+						}
+						if headers, ok := responseMap["headers"].(map[string]interface{}); ok {
+							headerMap := make(map[string]string)
+							for k, v := range headers {
+								if strVal, ok := v.(string); ok {
+									headerMap[k] = strVal
+								}
+							}
+							flow.Response.Headers = headerMap
+						}
+						if body, ok := responseMap["body"].(string); ok {
+							flow.Response.Body = []byte(body)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 备用方案：直接从VM中获取修改后的request和response对象
 	if context.Request != nil && flow.Request != nil {
-		// 应用请求修改
 		if val := vm.Get("request"); val != nil {
 			if reqObj := val.Export(); reqObj != nil {
 				if req, ok := reqObj.(*ScriptRequest); ok {
@@ -407,9 +488,8 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 			}
 		}
 	}
-	
+
 	if context.Response != nil && flow.Response != nil {
-		// 应用响应修改
 		if val := vm.Get("response"); val != nil {
 			if respObj := val.Export(); respObj != nil {
 				if resp, ok := respObj.(*ScriptResponse); ok {

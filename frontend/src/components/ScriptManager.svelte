@@ -37,41 +37,84 @@
   // 脚本模板
   const scriptTemplates = {
     request: `// 请求脚本模板 - 添加自定义请求头
-console.log('=== 请求脚本开始执行 ===');
-console.log('请求方法:', request.method);
-console.log('请求URL:', request.url);
+function onRequest(context) {
+  console.log('=== 请求脚本开始执行 ===');
+  console.log('请求方法:', context.request.method);
+  console.log('请求URL:', context.request.url);
 
-// 添加自定义请求头
-request.headers['X-ProxyWoman-Request'] = 'processed';
-request.headers['X-Script-Time'] = new Date().toISOString();
+  // 添加自定义请求头
+  context.request.headers['X-ProxyWoman-Request'] = 'processed';
+  context.request.headers['X-Script-Time'] = new Date().toISOString();
 
-console.log('已添加自定义请求头');
-console.log('=== 请求脚本执行完成 ===');`,
-    response: `// 响应脚本模板 - 添加自定义响应头
-console.log('=== 响应脚本开始执行 ===');
-console.log('响应状态码:', response.statusCode);
-console.log('响应状态:', response.status);
+  console.log('已添加自定义请求头');
+  console.log('=== 请求脚本执行完成 ===');
 
-// 添加自定义响应头
-response.headers['X-ProxyWoman-Response'] = 'processed';
-response.headers['X-Script-Time'] = new Date().toISOString();
+  return context;
+}`,
+    response: `// 响应脚本模板 - 修改JSON响应
+function onResponse(context) {
+  console.log('=== 响应脚本开始执行 ===');
+  console.log('响应状态码:', context.response.statusCode);
+  console.log('响应状态:', context.response.status);
 
-console.log('已添加自定义响应头');
-console.log('=== 响应脚本执行完成 ===');`,
+  // 检查响应类型
+  if (context.response.headers['Content-Type']?.includes('application/json')) {
+    try {
+      // 解析JSON响应
+      const data = JSON.parse(context.response.body);
+
+      // 修改数据
+      data.modified = true;
+      data.timestamp = new Date().toISOString();
+
+      // 更新响应体
+      context.response.body = JSON.stringify(data);
+
+      console.log('Modified JSON response');
+    } catch (e) {
+      console.error('Failed to parse JSON:', e);
+    }
+  }
+
+  // 添加自定义响应头
+  context.response.headers['X-ProxyWoman-Response'] = 'processed';
+  context.response.headers['X-Script-Time'] = new Date().toISOString();
+
+  console.log('已添加自定义响应头');
+  console.log('=== 响应脚本执行完成 ===');
+
+  return context;
+}`,
     both: `// 完整脚本模板 - 处理请求和响应
-console.log('=== 完整脚本开始执行 ===');
-
-if (request) {
-  console.log('处理请求:', request.method, request.url);
-  request.headers['X-ProxyWoman-Request'] = 'processed';
+function onRequest(context) {
+  console.log('=== 请求阶段开始 ===');
+  console.log('处理请求:', context.request.method, context.request.url);
+  context.request.headers['X-ProxyWoman-Request'] = 'processed';
+  console.log('=== 请求阶段完成 ===');
+  return context;
 }
 
-if (response) {
-  console.log('处理响应:', response.statusCode, response.status);
-  response.headers['X-ProxyWoman-Response'] = 'processed';
-}
+function onResponse(context) {
+  console.log('=== 响应阶段开始 ===');
+  console.log('处理响应:', context.response.statusCode, context.response.status);
 
-console.log('=== 完整脚本执行完成 ===');`
+  // 检查响应类型并修改JSON
+  if (context.response.headers['Content-Type']?.includes('application/json')) {
+    try {
+      const data = JSON.parse(context.response.body);
+      data.processed = true;
+      data.timestamp = new Date().toISOString();
+      context.response.body = JSON.stringify(data);
+      console.log('Modified JSON response');
+    } catch (e) {
+      console.error('Failed to parse JSON:', e);
+    }
+  }
+
+  context.response.headers['X-ProxyWoman-Response'] = 'processed';
+  console.log('=== 响应阶段完成 ===');
+  return context;
+}`
   };
 
   onMount(async () => {
