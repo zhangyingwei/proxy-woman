@@ -725,8 +725,15 @@
                         </div>
                       </div>
                     {:else if $selectedFlow.response.hexView}
+                      {@const hexContent = $selectedFlow.response.hexView}
+                      {@const maxHexLength = 2000} <!-- 限制16进制内容最大显示长度 -->
+                      {@const truncatedHex = hexContent.length > maxHexLength ? hexContent.substring(0, maxHexLength) + '\n\n... (内容已截断，总长度: ' + hexContent.length + ' 字符)' : hexContent}
                       <div class="hex-view">
-                        <pre class="hex-content">{$selectedFlow.response.hexView}</pre>
+                        <div class="hex-info">
+                          <span class="content-type-label">16进制内容</span>
+                          <span class="content-size">{hexContent.length} 字符{hexContent.length > maxHexLength ? ' (已截断)' : ''}</span>
+                        </div>
+                        <pre class="hex-content">{truncatedHex}</pre>
                       </div>
                     {:else}
                       <div class="binary-content">
@@ -774,7 +781,28 @@
                         <div class="image-container">
                           {#if isSVG(contentType)}
                             <!-- SVG图片直接显示文本内容 -->
-                            <div class="svg-container" innerHTML={$selectedFlow.response.textContent || responseContent}></div>
+                            {@const svgContent = $selectedFlow.response.textContent || responseContent}
+                            {#if svgContent && svgContent.trim().startsWith('<svg')}
+                              <div class="svg-container" innerHTML={svgContent}></div>
+                            {:else if $selectedFlow.response.base64Content}
+                              <!-- 如果textContent不是SVG，尝试解码base64 -->
+                              {@const decodedSvg = atob($selectedFlow.response.base64Content)}
+                              {#if decodedSvg && decodedSvg.trim().startsWith('<svg')}
+                                <div class="svg-container" innerHTML={decodedSvg}></div>
+                              {:else}
+                                <div class="svg-error">
+                                  <p>SVG内容格式错误</p>
+                                  <details>
+                                    <summary>查看原始内容</summary>
+                                    <pre>{svgContent || decodedSvg}</pre>
+                                  </details>
+                                </div>
+                              {/if}
+                            {:else}
+                              <div class="svg-error">
+                                <p>无法获取SVG内容</p>
+                              </div>
+                            {/if}
                           {:else}
                             <!-- 其他图片使用base64显示 -->
                             <img
@@ -1016,10 +1044,20 @@
   }
 
   .hex-view {
-    padding: 16px;
     background-color: #1E1E1E;
     border-radius: 4px;
     border: 1px solid #3E3E42;
+    overflow: hidden;
+  }
+
+  .hex-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background-color: #2D2D30;
+    border-bottom: 1px solid #3E3E42;
+    font-size: 10px;
   }
 
   .hex-content {
@@ -1028,6 +1066,7 @@
     line-height: 1.4;
     color: #D4D4D4;
     margin: 0;
+    padding: 16px;
     white-space: pre;
     overflow: auto;
     max-height: 400px;
@@ -1103,6 +1142,29 @@
     max-height: 400px;
     height: auto;
     width: auto;
+  }
+
+  .svg-error {
+    padding: 16px;
+    background-color: #2D2D30;
+    border: 1px solid #F44336;
+    border-radius: 4px;
+    color: #F44336;
+    text-align: center;
+  }
+
+  .svg-error details {
+    margin-top: 8px;
+    text-align: left;
+  }
+
+  .svg-error pre {
+    background-color: #1E1E1E;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    max-height: 200px;
+    overflow: auto;
   }
 
   .html-preview {

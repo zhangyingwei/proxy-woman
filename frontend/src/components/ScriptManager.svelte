@@ -81,8 +81,11 @@ console.log('=== 完整脚本执行完成 ===');`
   async function loadScripts() {
     try {
       scripts = await GetAllScripts();
+      console.log('Loaded scripts:', scripts.length);
     } catch (error) {
       console.error('Failed to load scripts:', error);
+      // 显示错误提示
+      alert('加载脚本失败: ' + error);
     }
   }
 
