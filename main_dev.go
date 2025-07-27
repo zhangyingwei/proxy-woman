@@ -19,7 +19,7 @@ var assets embed.FS
 func main() {
 	// 开发模式下的额外日志
 	log.Println("🚀 Starting ProxyWoman in development mode...")
-	
+
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -45,7 +45,7 @@ func main() {
 		},
 		// 开发模式特定选项
 		Debug: options.Debug{
-			OpenInspectorOnStartup: true,
+			OpenInspectorOnStartup: false,
 		},
 	})
 
