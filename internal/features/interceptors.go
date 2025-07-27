@@ -2,6 +2,7 @@ package features
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -180,8 +181,7 @@ func (si *ScriptInterceptor) InterceptRequest(flow *proxycore.Flow, w http.Respo
 		}
 
 		if modified {
-			// 添加脚本修改标签
-			flow.AddTag("script-modified-request")
+			// 不再添加script-modified标签，由脚本管理器统一处理
 		}
 	}
 
@@ -275,9 +275,13 @@ func (si *ScriptInterceptor) InterceptResponse(flow *proxycore.Flow, resp *http.
 		}
 
 		// 检查响应体是否被修改
-		if len(flow.Response.Body) > 0 && string(flow.Response.Body) != string(originalBody) {
+		if string(flow.Response.Body) != string(originalBody) {
 			newResp.Body = io.NopCloser(bytes.NewReader(flow.Response.Body))
 			newResp.ContentLength = int64(len(flow.Response.Body))
+			// 更新Content-Length头
+			if newResp.ContentLength >= 0 {
+				newResp.Header.Set("Content-Length", fmt.Sprintf("%d", newResp.ContentLength))
+			}
 			modified = true
 		} else {
 			// 使用原始响应体
@@ -285,8 +289,7 @@ func (si *ScriptInterceptor) InterceptResponse(flow *proxycore.Flow, resp *http.
 		}
 
 		if modified {
-			// 添加脚本修改标签
-			flow.AddTag("script-modified-response")
+			// 不再添加script-modified标签，由脚本管理器统一处理
 			return newResp, nil
 		}
 	}

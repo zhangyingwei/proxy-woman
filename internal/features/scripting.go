@@ -2,6 +2,7 @@ package features
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -262,23 +263,36 @@ func (sm *ScriptManager) ExecuteRequestScripts(flow *proxycore.Flow) error {
 		flow.ScriptExecutions = append(flow.ScriptExecutions, execution)
 	}
 
+	// 统计执行成功的脚本数量
+	successCount := 0
+	for _, execution := range flow.ScriptExecutions {
+		if execution.Phase == "request" && execution.Success {
+			successCount++
+		}
+	}
+
 	// 只有在实际执行了脚本时才添加标签
-	if executed {
+	if executed && successCount > 0 {
 		if flow.Tags == nil {
 			flow.Tags = make([]string, 0)
 		}
 
+		// 添加脚本标签，显示执行成功的脚本数量
+		scriptTag := fmt.Sprintf("脚本(%d)", successCount)
+
 		// 检查是否已经有脚本标签，避免重复添加
 		hasScriptTag := false
-		for _, tag := range flow.Tags {
-			if tag == "script-processed" {
+		for i, tag := range flow.Tags {
+			if strings.HasPrefix(tag, "脚本(") {
+				// 更新现有标签
+				flow.Tags[i] = scriptTag
 				hasScriptTag = true
 				break
 			}
 		}
 
 		if !hasScriptTag {
-			flow.Tags = append(flow.Tags, "script-processed")
+			flow.Tags = append(flow.Tags, scriptTag)
 		}
 	}
 
@@ -325,23 +339,36 @@ func (sm *ScriptManager) ExecuteResponseScripts(flow *proxycore.Flow) error {
 		flow.ScriptExecutions = append(flow.ScriptExecutions, execution)
 	}
 
+	// 统计执行成功的脚本数量
+	successCount := 0
+	for _, execution := range flow.ScriptExecutions {
+		if execution.Phase == "response" && execution.Success {
+			successCount++
+		}
+	}
+
 	// 只有在实际执行了脚本时才添加标签
-	if executed {
+	if executed && successCount > 0 {
 		if flow.Tags == nil {
 			flow.Tags = make([]string, 0)
 		}
 
+		// 添加脚本标签，显示执行成功的脚本数量
+		scriptTag := fmt.Sprintf("脚本(%d)", successCount)
+
 		// 检查是否已经有脚本标签，避免重复添加
 		hasScriptTag := false
-		for _, tag := range flow.Tags {
-			if tag == "script-processed" {
+		for i, tag := range flow.Tags {
+			if strings.HasPrefix(tag, "脚本(") {
+				// 更新现有标签
+				flow.Tags[i] = scriptTag
 				hasScriptTag = true
 				break
 			}
 		}
 
 		if !hasScriptTag {
-			flow.Tags = append(flow.Tags, "script-processed")
+			flow.Tags = append(flow.Tags, scriptTag)
 		}
 	}
 
