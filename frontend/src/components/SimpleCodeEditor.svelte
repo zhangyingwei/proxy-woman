@@ -23,36 +23,7 @@
 
   // 移除语言检测，纯文本展示
 
-  // 高性能HTML转义函数 - 使用单次遍历
-  function escapeHtml(code: string): string {
-    if (!code) return '';
-
-    // 对于大内容，使用更高效的转义方法
-    if (code.length > 50000) {
-      // 使用数组拼接，避免多次字符串替换
-      const chars = [];
-      for (let i = 0; i < code.length; i++) {
-        const char = code[i];
-        switch (char) {
-          case '&': chars.push('&amp;'); break;
-          case '<': chars.push('&lt;'); break;
-          case '>': chars.push('&gt;'); break;
-          case '"': chars.push('&quot;'); break;
-          case "'": chars.push('&#39;'); break;
-          default: chars.push(char); break;
-        }
-      }
-      return chars.join('');
-    }
-
-    // 小内容使用原来的方法
-    return code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  // 移除HTML转义，直接显示原始内容以获得最佳性能
 
   onMount(() => {
     updateContent();
@@ -82,9 +53,10 @@
     }
 
     // 立即开始处理，不延迟
-    renderTimeout = setTimeout(() => {
-      updateContent();
-    }, 1);
+    // renderTimeout = setTimeout(() => {
+    //   updateContent();
+    // }, 1);
+    updateContent();
   }
 
   function updateContent() {
@@ -118,64 +90,59 @@
 
   // 直接处理小内容
   function processContentDirectly(content: string, isTruncated: boolean) {
-    const escaped = escapeHtml(content);
-    renderContent(escaped, content.length, isTruncated);
+    renderContent(content, content.length, isTruncated);
   }
 
-  // 分块处理大内容
+  // 分块处理大内容 - 直接使用原始内容，无需转义
   function processContentInChunks(content: string, isTruncated: boolean, startTime: number) {
-    const chunks = [];
-    let currentIndex = 0;
+    // 由于移除了转义处理，大内容可以直接渲染
+    // 但仍保持超时检查以确保5秒内完成
+    const currentTime = Date.now();
 
-    function processNextChunk() {
-      const currentTime = Date.now();
-
-      // 超时检查 - 如果超过5秒，强制截断
-      if (currentTime - startTime > MAX_PROCESSING_TIME) {
-        const processedContent = chunks.join('');
-        renderContent(processedContent, content.length, true, true); // 标记为超时截断
-        return;
-      }
-
-      // 处理下一个块
-      if (currentIndex < content.length) {
-        const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, content.length);
-        const chunk = content.substring(currentIndex, chunkEnd);
-        const escapedChunk = escapeHtml(chunk);
-        chunks.push(escapedChunk);
-        currentIndex = chunkEnd;
-
-        // 使用setTimeout让出控制权，避免阻塞UI
-        setTimeout(processNextChunk, 1);
-      } else {
-        // 所有块处理完成
-        const finalContent = chunks.join('');
-        renderContent(finalContent, content.length, isTruncated);
-      }
+    if (currentTime - startTime > MAX_PROCESSING_TIME) {
+      // 超时则截断内容
+      const truncatedContent = content.substring(0, CHUNK_SIZE);
+      renderContent(truncatedContent, content.length, true, true);
+      return;
     }
 
-    // 开始处理第一个块
-    processNextChunk();
+    // 直接渲染完整内容
+    renderContent(content, content.length, isTruncated);
   }
 
-  // 渲染最终内容
-  function renderContent(escapedContent: string, originalLength: number, isTruncated: boolean, isTimeout: boolean = false) {
+  // 渲染最终内容 - 使用textContent直接显示原始内容
+  function renderContent(rawContent: string, originalLength: number, isTruncated: boolean, isTimeout: boolean = false) {
     requestAnimationFrame(() => {
       if (container) {
-        let content = `<pre class="plain-text">${escapedContent}</pre>`;
+        // 清空容器
+        container.innerHTML = '';
+
+        // 创建pre元素并直接设置textContent
+        const preElement = document.createElement('pre');
+        preElement.className = 'plain-text';
+        preElement.textContent = rawContent;
+        container.appendChild(preElement);
 
         // 添加性能提示
         if (originalLength > LARGE_CONTENT_THRESHOLD) {
-          content += `<div class="performance-notice">内容较大 (${(originalLength / 1024).toFixed(1)}KB)，已优化渲染性能</div>`;
+          const notice = document.createElement('div');
+          notice.className = 'performance-notice';
+          notice.textContent = `内容较大 (${(originalLength / 1024).toFixed(1)}KB)，已优化渲染性能`;
+          container.appendChild(notice);
         }
 
         if (isTimeout) {
-          content += `<div class="truncated-notice">内容处理超时（5秒），已截断显示以确保响应性能</div>`;
+          const notice = document.createElement('div');
+          notice.className = 'truncated-notice';
+          notice.textContent = '内容处理超时（5秒），已截断显示以确保响应性能';
+          container.appendChild(notice);
         } else if (isTruncated) {
-          content += `<div class="truncated-notice">内容过大，已截断显示前 ${MAX_RENDER_SIZE.toLocaleString()} 字符</div>`;
+          const notice = document.createElement('div');
+          notice.className = 'truncated-notice';
+          notice.textContent = `内容过大，已截断显示前 ${MAX_RENDER_SIZE.toLocaleString()} 字符`;
+          container.appendChild(notice);
         }
 
-        container.innerHTML = content;
         isProcessing = false;
       }
     });
