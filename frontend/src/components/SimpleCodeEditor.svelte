@@ -19,19 +19,7 @@
 
 
 
-  // 简化的语言检测（仅用于CSS类名）
-  function getLanguageClass(): string {
-    if (!language || language === 'auto') return 'language-text';
-
-    const lowerLang = language.toLowerCase();
-    if (lowerLang.includes('json')) return 'language-json';
-    if (lowerLang.includes('javascript') || lowerLang.includes('js')) return 'language-javascript';
-    if (lowerLang.includes('html')) return 'language-html';
-    if (lowerLang.includes('css')) return 'language-css';
-    if (lowerLang.includes('xml')) return 'language-xml';
-
-    return 'language-text';
-  }
+  // 移除语言检测，纯文本展示
 
   // 简单的HTML转义函数（移除语法高亮以提升性能）
   function escapeHtml(code: string): string {
@@ -73,8 +61,7 @@
     }
 
     // 根据内容大小调整延迟时间，大内容使用更长延迟确保UI响应
-    const delay = value && value.length > 500000 ? 100 :
-                  value && value.length > 100000 ? 50 : 10;
+    const delay = 1;
 
     // 异步更新内容
     renderTimeout = setTimeout(() => {
@@ -100,15 +87,13 @@
       isTruncated = true;
     }
 
-    const languageClass = getLanguageClass();
-
-    // 直接转义HTML，不进行语法高亮（提升性能）
+    // 直接转义HTML，纯文本展示（提升性能）
     const escaped = escapeHtml(contentToRender);
 
     // 使用requestAnimationFrame确保不阻塞UI
     requestAnimationFrame(() => {
       if (container) {
-        let content = `<pre><code class="${languageClass}">${escaped}</code></pre>`;
+        let content = `<pre class="plain-text">${escaped}</pre>`;
 
         // 添加性能提示（已移除语法高亮）
         if (contentToRender.length > LARGE_CONTENT_THRESHOLD) {
@@ -194,6 +179,24 @@
     color: #888;
     font-style: italic;
     text-align: left;
+    width: 100%;
+  }
+
+  /* 纯文本样式 - 确保内容以最简单的方式展示 */
+  .code-editor .plain-text {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #D4D4D4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: left;
+    display: block;
     width: 100%;
   }
 
