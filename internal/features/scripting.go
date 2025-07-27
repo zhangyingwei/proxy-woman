@@ -51,8 +51,14 @@ type ScriptConsole struct {
 	logs []string
 }
 
-// Log 记录日志
+// Log 记录日志（大写L，用于Go代码调用）
 func (sc *ScriptConsole) Log(args ...interface{}) {
+	message := fmt.Sprint(args...)
+	sc.logs = append(sc.logs, message)
+}
+
+// log 记录日志（小写l，用于JavaScript调用）
+func (sc *ScriptConsole) LogJS(args ...interface{}) {
 	message := fmt.Sprint(args...)
 	sc.logs = append(sc.logs, message)
 }
@@ -378,7 +384,11 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 	vm.Set("flow", context.Flow)
 	vm.Set("request", context.Request)
 	vm.Set("response", context.Response)
-	vm.Set("console", console)
+
+	// 创建console对象，支持JavaScript的console.log调用
+	consoleObj := vm.NewObject()
+	consoleObj.Set("log", console.LogJS)
+	vm.Set("console", consoleObj)
 
 	// 创建完整的context对象供脚本使用
 	vm.Set("context", context)
