@@ -1,6 +1,6 @@
 <script lang="ts">
   import { filteredFlows } from '../stores/flowStore';
-  import { selectionActions } from '../stores/selectionStore';
+  import { selectionActions, selectedFlow } from '../stores/selectionStore';
   import type { Flow } from '../stores/flowStore';
   import { detectRequestType, getAllRequestTypes, getAllHttpMethods, type RequestType, type HttpMethod } from '../utils/requestTypeUtils';
   import { formatRelativeTime, formatAbsoluteTime, formatDuration, formatSize } from '../utils/timeUtils';
@@ -246,6 +246,7 @@
       {#each filteredByType as flow, index (`${flow.id}-${index}`)}
         <tr
           class="flow-row"
+          class:selected={$selectedFlow && $selectedFlow.id === flow.id}
           on:click={() => handleRowClick(flow)}
           on:contextmenu={(e) => handleContextMenu(e, flow)}
           on:keydown={(e) => e.key === 'Enter' && handleRowClick(flow)}
@@ -554,6 +555,15 @@
   .flow-row:focus {
     outline: 1px solid #007ACC;
     background-color: #2A2D2E;
+  }
+
+  .flow-row.selected {
+    background-color: #264F78;
+    border-left: 3px solid #007ACC;
+  }
+
+  .flow-row.selected:hover {
+    background-color: #2D5A87;
   }
 
   .row-number-col {
