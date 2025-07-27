@@ -564,12 +564,14 @@
         <!-- 请求内容 -->
         <div class="panel-content">
           {#if activeRequestTab === 'headers'}
-            <div class="headers-view">
-              <div class="headers-grid">
-                {#each Object.entries($selectedFlow.request?.headers || {}) as [key, value]}
-                  <div class="header-name">{key}:</div>
-                  <div class="header-value">{value}</div>
-                {/each}
+            <div class="headers-view-container">
+              <div class="headers-view">
+                <div class="headers-grid">
+                  {#each Object.entries($selectedFlow.request?.headers || {}) as [key, value]}
+                    <div class="header-name">{key}:</div>
+                    <div class="header-value">{value}</div>
+                  {/each}
+                </div>
               </div>
             </div>
           {:else if activeRequestTab === 'payload'}
@@ -904,12 +906,12 @@
 
   /* 文本内容容器 - 只为文本内容添加 padding */
   .text-content-container {
-    padding: 8px;
+    padding: 4px;
   }
 
   /* Headers 视图容器 */
   .headers-view-container {
-    padding: 8px;
+    padding: 4px;
   }
 
   .headers-view {
@@ -945,6 +947,7 @@
   .preview-view {
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 11px;
+    padding: 4px;
   }
 
   .json-tree-container {

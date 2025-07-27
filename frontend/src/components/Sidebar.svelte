@@ -376,7 +376,7 @@
                       <span class="uri-expand-icon">
                         {node.children.size > 0 ? (node.expanded ? '▼' : '▶') : '•'}
                       </span>
-                      <span class="uri-segment">{node.name}</span>
+                      <span class="uri-segment">/{node.name}</span>
                       <span class="uri-count">({node.flows.length})</span>
                     </div>
 
@@ -391,7 +391,7 @@
                             tabindex="0"
                           >
                             <span class="uri-expand-icon">•</span>
-                            <span class="uri-segment">{childNode.name}</span>
+                            <span class="uri-segment">/{childNode.name}</span>
                             <span class="uri-count">({childNode.flows.length})</span>
                           </div>
                         </div>
