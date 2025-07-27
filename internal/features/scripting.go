@@ -460,60 +460,93 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 	}
 
 	// 获取修改后的值并应用到Flow
-	// 从context对象中获取修改后的值
-	if contextVal := vm.Get("context"); contextVal != nil {
-		if contextObj := contextVal.Export(); contextObj != nil {
-			// 尝试将导出的对象转换为map，然后提取修改后的值
-			if contextMap, ok := contextObj.(map[string]interface{}); ok {
-				// 应用请求修改
-				if requestVal, exists := contextMap["request"]; exists && flow.Request != nil {
-					if requestMap, ok := requestVal.(map[string]interface{}); ok {
-						if method, ok := requestMap["method"].(string); ok {
-							flow.Request.Method = method
+	// 直接从VM中获取修改后的context对象
+	if contextVal := vm.Get("context"); contextVal != nil && !goja.IsUndefined(contextVal) {
+		console.LogJS("Found context object in VM")
+
+		// 将context对象转换为Go对象
+		if contextObj := contextVal.ToObject(vm); contextObj != nil {
+			// 应用请求修改
+			if requestVal := contextObj.Get("request"); requestVal != nil && !goja.IsUndefined(requestVal) && flow.Request != nil {
+				console.LogJS("Processing request modifications")
+				if requestObj := requestVal.ToObject(vm); requestObj != nil {
+					if method := requestObj.Get("method"); method != nil && !goja.IsUndefined(method) {
+						if methodStr := method.String(); methodStr != "" {
+							flow.Request.Method = methodStr
+							console.LogJS(fmt.Sprintf("Updated request method to: %s", methodStr))
 						}
-						if url, ok := requestMap["url"].(string); ok {
-							flow.Request.URL = url
+					}
+					if url := requestObj.Get("url"); url != nil && !goja.IsUndefined(url) {
+						if urlStr := url.String(); urlStr != "" {
+							flow.Request.URL = urlStr
+							console.LogJS(fmt.Sprintf("Updated request URL to: %s", urlStr))
 						}
-						if headers, ok := requestMap["headers"].(map[string]interface{}); ok {
-							headerMap := make(map[string]string)
-							for k, v := range headers {
-								if strVal, ok := v.(string); ok {
-									headerMap[k] = strVal
+					}
+					if headers := requestObj.Get("headers"); headers != nil && !goja.IsUndefined(headers) {
+						if headersObj := headers.Export(); headersObj != nil {
+							if headerMap, ok := headersObj.(map[string]interface{}); ok {
+								newHeaders := make(map[string]string)
+								for k, v := range headerMap {
+									if strVal, ok := v.(string); ok {
+										newHeaders[k] = strVal
+									}
 								}
+								flow.Request.Headers = newHeaders
+								console.LogJS(fmt.Sprintf("Updated request headers: %d headers", len(newHeaders)))
 							}
-							flow.Request.Headers = headerMap
 						}
-						if body, ok := requestMap["body"].(string); ok {
-							flow.Request.Body = []byte(body)
+					}
+					if body := requestObj.Get("body"); body != nil && !goja.IsUndefined(body) {
+						if bodyStr := body.String(); bodyStr != "" {
+							flow.Request.Body = []byte(bodyStr)
+							console.LogJS(fmt.Sprintf("Updated request body: %d bytes", len(bodyStr)))
 						}
 					}
 				}
+			}
 
-				// 应用响应修改
-				if responseVal, exists := contextMap["response"]; exists && flow.Response != nil {
-					if responseMap, ok := responseVal.(map[string]interface{}); ok {
-						if statusCode, ok := responseMap["statusCode"].(int); ok {
-							flow.Response.StatusCode = statusCode
+			// 应用响应修改
+			if responseVal := contextObj.Get("response"); responseVal != nil && !goja.IsUndefined(responseVal) && flow.Response != nil {
+				console.LogJS("Processing response modifications")
+				if responseObj := responseVal.ToObject(vm); responseObj != nil {
+					if statusCode := responseObj.Get("statusCode"); statusCode != nil && !goja.IsUndefined(statusCode) {
+						if statusCodeInt := statusCode.ToInteger(); statusCodeInt != 0 {
+							flow.Response.StatusCode = int(statusCodeInt)
+							console.LogJS(fmt.Sprintf("Updated response status code to: %d", statusCodeInt))
 						}
-						if status, ok := responseMap["status"].(string); ok {
-							flow.Response.Status = status
+					}
+					if status := responseObj.Get("status"); status != nil && !goja.IsUndefined(status) {
+						if statusStr := status.String(); statusStr != "" {
+							flow.Response.Status = statusStr
+							console.LogJS(fmt.Sprintf("Updated response status to: %s", statusStr))
 						}
-						if headers, ok := responseMap["headers"].(map[string]interface{}); ok {
-							headerMap := make(map[string]string)
-							for k, v := range headers {
-								if strVal, ok := v.(string); ok {
-									headerMap[k] = strVal
+					}
+					if headers := responseObj.Get("headers"); headers != nil && !goja.IsUndefined(headers) {
+						if headersObj := headers.Export(); headersObj != nil {
+							if headerMap, ok := headersObj.(map[string]interface{}); ok {
+								newHeaders := make(map[string]string)
+								for k, v := range headerMap {
+									if strVal, ok := v.(string); ok {
+										newHeaders[k] = strVal
+									}
 								}
+								flow.Response.Headers = newHeaders
+								console.LogJS(fmt.Sprintf("Updated response headers: %d headers", len(newHeaders)))
 							}
-							flow.Response.Headers = headerMap
 						}
-						if body, ok := responseMap["body"].(string); ok {
-							flow.Response.Body = []byte(body)
+					}
+					if body := responseObj.Get("body"); body != nil && !goja.IsUndefined(body) {
+						if bodyStr := body.String(); bodyStr != "" {
+							originalLen := len(flow.Response.Body)
+							flow.Response.Body = []byte(bodyStr)
+							console.LogJS(fmt.Sprintf("Updated response body: %d -> %d bytes", originalLen, len(bodyStr)))
 						}
 					}
 				}
 			}
 		}
+	} else {
+		console.LogJS("No context object found in VM")
 	}
 
 	// 备用方案：直接从VM中获取修改后的request和response对象
