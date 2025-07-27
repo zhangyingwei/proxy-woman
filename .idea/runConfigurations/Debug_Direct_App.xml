@@ -1,0 +1,19 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Debug Direct App" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="ProxyWoman" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-tags dev -gcflags &quot;all=-N -l&quot;" />
+    <envs>
+      <env name="CGO_ENABLED" value="1" />
+      <env name="WAILS_DEBUG" value="1" />
+      <env name="CGO_LDFLAGS" value="-framework UniformTypeIdentifiers" />
+      <env name="GOROOT" value="/usr/local/go" />
+      <env name="GOPATH" value="/Users/zhangyw/go" />
+      <env name="PATH" value="/usr/local/go/bin:/Users/zhangyw/go/bin:$PATH" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="ProxyWoman" />
+    <directory value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -3,6 +3,7 @@ package proxycore
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
@@ -26,8 +27,9 @@ func (rd *ResponseDecoder) DecodeResponse(response *FlowResponse) error {
 	// 获取内容编码
 	encoding := strings.ToLower(response.Headers["Content-Encoding"])
 	contentType := strings.ToLower(response.Headers["Content-Type"])
+
+	fmt.Println("======================", encoding, contentType) // 设置基本信息
 	
-	// 设置基本信息
 	response.ContentType = contentType
 	response.Encoding = encoding
 
@@ -37,11 +39,25 @@ func (rd *ResponseDecoder) DecodeResponse(response *FlowResponse) error {
 		// 解码失败，使用原始内容
 		decodedBody = response.Body
 	}
-	response.DecodedBody = decodedBody
+	// 设置解码后的内容（Base64编码）
+	response.DecodedBody = base64.StdEncoding.EncodeToString(decodedBody)
 
 	// 判断内容类型
 	response.IsText = rd.isTextContent(decodedBody, contentType)
 	response.IsBinary = !response.IsText
+	response.IsDocument = rd.isDocumentContent(contentType)
+
+	// 根据内容类型设置不同的内容格式
+	if response.IsDocument {
+		// 文档类型：直接返回字符串
+		response.TextContent = string(decodedBody)
+	} else if response.IsBinary {
+		// 二进制类型：返回Base64编码
+		response.Base64Content = base64.StdEncoding.EncodeToString(decodedBody)
+	} else {
+		// 其他文本类型：也返回字符串
+		response.TextContent = string(decodedBody)
+	}
 
 	// 生成16进制视图（对于二进制内容或大文件）
 	if response.IsBinary || len(decodedBody) > 1024*1024 { // 大于1MB的文件
@@ -154,6 +170,46 @@ func (rd *ResponseDecoder) isTextContent(data []byte, contentType string) bool {
 	return false
 }
 
+// isDocumentContent 判断是否为文档类型内容
+func (rd *ResponseDecoder) isDocumentContent(contentType string) bool {
+	// 文档类型的Content-Type列表
+	documentTypes := []string{
+		"text/javascript",
+		"application/javascript",
+		"application/x-javascript",
+		"text/css",
+		"application/json",
+		"application/ld+json",
+		"text/plain",
+		"text/html",
+		"application/xml",
+		"text/xml",
+		"application/xhtml+xml",
+		"text/csv",
+		"application/csv",
+		"text/markdown",
+		"application/yaml",
+		"text/yaml",
+		"application/x-yaml",
+	}
+
+	contentType = strings.ToLower(contentType)
+
+	// 检查是否匹配文档类型
+	for _, docType := range documentTypes {
+		if strings.Contains(contentType, docType) {
+			return true
+		}
+	}
+
+	// 检查文件扩展名相关的Content-Type
+	if strings.Contains(contentType, "text/") {
+		return true
+	}
+
+	return false
+}
+
 // generateHexView 生成16进制视图
 func (rd *ResponseDecoder) generateHexView(data []byte) string {
 	if len(data) == 0 {
@@ -175,7 +231,7 @@ func (rd *ResponseDecoder) generateHexView(data []byte) string {
 
 	for line := 0; line < lines; line++ {
 		offset := line * bytesPerLine
-		
+
 		// 写入偏移地址
 		result.WriteString(fmt.Sprintf("%08x  ", offset))
 

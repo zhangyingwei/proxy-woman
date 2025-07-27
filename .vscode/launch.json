@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Wails App",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}",
+            "env": {
+                "CGO_ENABLED": "1"
+            },
+            "args": [],
+            "showLog": true,
+            "trace": "verbose"
+        },
+        {
+            "name": "Debug Wails Dev",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "program": "wails",
+            "args": ["dev", "-debug"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "CGO_ENABLED": "1"
+            }
+        }
+    ]
+}

@@ -26,15 +26,15 @@ type ResponseInterceptor interface {
 
 // ProxyServer 代理服务器
 type ProxyServer struct {
-	port                int
-	certManager         *certmanager.CertManager
-	requestInterceptors []RequestInterceptor
+	port                 int
+	certManager          *certmanager.CertManager
+	requestInterceptors  []RequestInterceptor
 	responseInterceptors []ResponseInterceptor
-	server              *http.Server
-	flows               map[string]*Flow
-	flowsMutex          sync.RWMutex
-	flowHandler         func(*Flow)
-	running             bool
+	server               *http.Server
+	flows                map[string]*Flow
+	flowsMutex           sync.RWMutex
+	flowHandler          func(*Flow)
+	running              bool
 }
 
 // NewProxyServer 创建新的代理服务器
@@ -182,8 +182,6 @@ func (ps *ProxyServer) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// 设置响应信息
 	flow.SetResponse(resp, respBody)
-
-	// 执行响应拦截器
 	modifiedResp := resp
 	for _, interceptor := range ps.responseInterceptors {
 		modifiedResp, err = interceptor.InterceptResponse(flow, modifiedResp)
@@ -423,8 +421,6 @@ func (ps *ProxyServer) handleHTTPS(tlsConn *tls.Conn, targetHost string) {
 
 	fmt.Printf("HTTPS handler finished for %s\n", targetHost)
 }
-
-
 
 // singleConnListener 单连接监听器
 type singleConnListener struct {

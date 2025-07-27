@@ -8,37 +8,37 @@ import (
 
 // ScriptExecution 脚本执行记录
 type ScriptExecution struct {
-	ScriptID    string    `json:"scriptId"`
-	ScriptName  string    `json:"scriptName"`
-	Phase       string    `json:"phase"` // "request" or "response"
-	Success     bool      `json:"success"`
-	Error       string    `json:"error,omitempty"`
-	Logs        []string  `json:"logs"`
-	ExecutedAt  time.Time `json:"executedAt"`
+	ScriptID   string    `json:"scriptId"`
+	ScriptName string    `json:"scriptName"`
+	Phase      string    `json:"phase"` // "request" or "response"
+	Success    bool      `json:"success"`
+	Error      string    `json:"error,omitempty"`
+	Logs       []string  `json:"logs"`
+	ExecutedAt time.Time `json:"executedAt"`
 }
 
 // Flow 表示一个完整的HTTP请求/响应流
 type Flow struct {
-	ID               string             `json:"id"`
-	URL              string             `json:"url"`
-	Method           string             `json:"method"`
-	StatusCode       int                `json:"statusCode"`
-	Client           string             `json:"client"`
-	Domain           string             `json:"domain"`
-	Path             string             `json:"path"`
-	Scheme           string             `json:"scheme"`
-	StartTime        time.Time          `json:"startTime"`
-	EndTime          time.Time          `json:"endTime"`
-	Duration         time.Duration      `json:"duration"`
-	RequestSize      int64              `json:"requestSize"`
-	ResponseSize     int64              `json:"responseSize"`
-	Request          *FlowRequest       `json:"request"`
-	Response         *FlowResponse      `json:"response"`
-	IsPinned         bool               `json:"isPinned"`
-	IsBlocked        bool               `json:"isBlocked"`
-	ContentType      string             `json:"contentType"`
-	Tags             []string           `json:"tags"`
-	ScriptExecutions []ScriptExecution  `json:"scriptExecutions,omitempty"`
+	ID               string            `json:"id"`
+	URL              string            `json:"url"`
+	Method           string            `json:"method"`
+	StatusCode       int               `json:"statusCode"`
+	Client           string            `json:"client"`
+	Domain           string            `json:"domain"`
+	Path             string            `json:"path"`
+	Scheme           string            `json:"scheme"`
+	StartTime        time.Time         `json:"startTime"`
+	EndTime          time.Time         `json:"endTime"`
+	Duration         time.Duration     `json:"duration"`
+	RequestSize      int64             `json:"requestSize"`
+	ResponseSize     int64             `json:"responseSize"`
+	Request          *FlowRequest      `json:"request"`
+	Response         *FlowResponse     `json:"response"`
+	IsPinned         bool              `json:"isPinned"`
+	IsBlocked        bool              `json:"isBlocked"`
+	ContentType      string            `json:"contentType"`
+	Tags             []string          `json:"tags"`
+	ScriptExecutions []ScriptExecution `json:"scriptExecutions,omitempty"`
 }
 
 // FlowRequest 表示HTTP请求
@@ -56,10 +56,13 @@ type FlowResponse struct {
 	Status        string            `json:"status"`
 	Headers       map[string]string `json:"headers"`
 	Body          []byte            `json:"body"`          // 原始响应体
-	DecodedBody   []byte            `json:"decodedBody"`   // 解码后的响应体
+	DecodedBody   string            `json:"decodedBody"`   // 解码后的响应体（Base64编码）
+	TextContent   string            `json:"textContent"`   // 文本内容（用于文档类型）
+	Base64Content string            `json:"base64Content"` // Base64内容（用于二进制类型）
 	HexView       string            `json:"hexView"`       // 16进制视图
 	IsText        bool              `json:"isText"`        // 是否为文本内容
 	IsBinary      bool              `json:"isBinary"`      // 是否为二进制内容
+	IsDocument    bool              `json:"isDocument"`    // 是否为文档类型（js,css,json,txt等）
 	ContentType   string            `json:"contentType"`   // 内容类型
 	Encoding      string            `json:"encoding"`      // 编码方式
 	Raw           string            `json:"raw"`

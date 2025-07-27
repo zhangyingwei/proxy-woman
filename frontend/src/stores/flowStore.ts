@@ -89,7 +89,7 @@ export const flowActions = {
       appIcon: appInfo.icon,
       appCategory: appInfo.category
     };
-
+    
     flows.update(currentFlows => [enrichedFlow, ...currentFlows]);
   },
 

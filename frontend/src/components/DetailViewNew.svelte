@@ -16,7 +16,51 @@
 
   const DEBUG_ENABLED = false;
 
-  // 字节转字符串
+  // 获取响应内容 - 优先使用新的格式化字段
+  function getResponseContent(response: any): string {
+    if (!response) return '';
+
+    // 优先使用新的格式化字段
+    if (response.isDocument && response.textContent) {
+      return response.textContent;
+    }
+
+    if (response.isBinary && response.base64Content) {
+      // 对于二进制内容，可以选择显示base64或提示
+      return `[二进制内容 - Base64: ${response.base64Content.substring(0, 100)}...]`;
+    }
+
+    if (response.textContent) {
+      return response.textContent;
+    }
+
+    // 如果有 decodedBody（现在是 base64 字符串），尝试解码
+    if (response.decodedBody) {
+      try {
+        // decodedBody 现在是 base64 编码的字符串，需要解码
+        const decodedBytes = atob(response.decodedBody);
+        return decodedBytes;
+      } catch (error) {
+        console.warn('Failed to decode base64 decodedBody:', error);
+        return response.decodedBody; // 如果解码失败，直接返回原始字符串
+      }
+    }
+
+    // 回退到原有逻辑
+    return bytesToString(response.body);
+  }
+
+  // Base64 解码辅助函数
+  function decodeBase64ToString(base64String: string): string {
+    try {
+      return atob(base64String);
+    } catch (error) {
+      console.warn('Failed to decode base64 string:', error);
+      return base64String;
+    }
+  }
+
+  // 字节转字符串（保留作为回退）
   function bytesToString(bytes: any): string {
     if (!bytes) return '';
 
@@ -27,6 +71,14 @@
     if (bytes instanceof Uint8Array) {
       try {
         return new TextDecoder().decode(bytes);
+      } catch (error) {
+        return String(bytes);
+      }
+    }
+
+    if (Array.isArray(bytes)) {
+      try {
+        return new TextDecoder().decode(new Uint8Array(bytes));
       } catch (error) {
         return String(bytes);
       }
@@ -619,12 +671,14 @@
         <!-- 响应内容 -->
         <div class="panel-content">
           {#if activeResponseTab === 'headers'}
-            <div class="headers-view">
-              <div class="headers-grid">
-                {#each Object.entries($selectedFlow.response?.headers || {}) as [key, value]}
-                  <div class="header-name">{key}:</div>
-                  <div class="header-value">{value}</div>
-                {/each}
+            <div class="headers-view-container">
+              <div class="headers-view">
+                <div class="headers-grid">
+                  {#each Object.entries($selectedFlow.response?.headers || {}) as [key, value]}
+                    <div class="header-name">{key}:</div>
+                    <div class="header-value">{value}</div>
+                  {/each}
+                </div>
               </div>
             </div>
           {:else if activeResponseTab === 'payload'}
@@ -634,24 +688,41 @@
                   <div class="loading-spinner"></div>
                   <div class="loading-text">正在加载响应内容...</div>
                 </div>
-              {:else if $selectedFlow && $selectedFlow.response && $selectedFlow.response.body}
-                {@const bodyText = bytesToString($selectedFlow.response.body)}
-                {#if bodyText && bodyText.length > 0}
+              {:else if $selectedFlow && $selectedFlow.response}
+                {@const responseContent = getResponseContent($selectedFlow.response)}
+                {#if responseContent && responseContent.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
-                  {@const decodedBodyText = $selectedFlow.response.decodedBody ? bytesToString($selectedFlow.response.decodedBody) : bodyText}
-                  {@const isTextContent = isTextType(contentType)}
+                  {@const isTextContent = $selectedFlow.response.isDocument || isTextType(contentType)}
+                  {@const isBinaryContent = $selectedFlow.response.isBinary}
 
                   {#if isTextContent}
-                    <!-- 文本内容直接显示 -->
-                    {@const formattedContent = formatContent(decodedBodyText, contentType)}
-                    <SimpleCodeEditor
-                      value={formattedContent}
-                      language={contentType}
-                      height="auto"
-                    />
-                  {:else}
-                    <!-- 二进制内容显示16进制 -->
-                    {#if $selectedFlow.response.hexView}
+                    {@const displayContent = $selectedFlow.response.textContent || responseContent}
+                    {@const formattedContent = formatContent(displayContent, contentType)}
+                    <!-- 文档类型或文本内容直接显示 -->
+                    <div class="text-content-container">
+                      <SimpleCodeEditor
+                        value={formattedContent}
+                        language={contentType}
+                        height="auto"
+                      />
+                    </div>
+                  {:else if isBinaryContent}
+                    <!-- 二进制内容处理 -->
+                    {#if $selectedFlow.response.base64Content}
+                      <div class="binary-content-mini">
+                        <div class="binary-info-mini">
+                          <span class="content-type-label-mini">二进制内容 (Base64)</span>
+                          <span class="content-size-mini">{$selectedFlow.response.base64Content.length} 字符</span>
+                        </div>
+                        <div class="base64-content-mini">
+                          <SimpleCodeEditor
+                            value={$selectedFlow.response.base64Content}
+                            language="text"
+                            height="120px"
+                          />
+                        </div>
+                      </div>
+                    {:else if $selectedFlow.response.hexView}
                       <div class="hex-view">
                         <pre class="hex-content">{$selectedFlow.response.hexView}</pre>
                       </div>
@@ -659,13 +730,22 @@
                       <div class="binary-content">
                         <div class="binary-info">
                           <span class="content-type-label">二进制内容</span>
-                          <span class="content-size">{bodyText.length} 字节</span>
+                          <span class="content-size">无法显示</span>
                         </div>
                         <div class="binary-placeholder">
-                          无法显示二进制内容的16进制视图
+                          无法显示二进制内容
                         </div>
                       </div>
                     {/if}
+                  {:else}
+                    <!-- 其他内容类型 -->
+                    <div class="text-content-container">
+                      <SimpleCodeEditor
+                        value={responseContent}
+                        language={contentType}
+                        height="auto"
+                      />
+                    </div>
                   {/if}
                 {:else}
                   <div class="empty-body">无响应内容</div>
@@ -681,30 +761,26 @@
                   <div class="loading-spinner"></div>
                   <div class="loading-text">正在加载预览内容...</div>
                 </div>
-              {:else if $selectedFlow && $selectedFlow.response && $selectedFlow.response.body}
-                {@const bodyText = bytesToString($selectedFlow.response.body)}
-                {#if bodyText && bodyText.length > 0}
+              {:else if $selectedFlow && $selectedFlow.response}
+                {@const responseContent = getResponseContent($selectedFlow.response)}
+                {#if responseContent && responseContent.length > 0}
                   {@const contentType = $selectedFlow.contentType || $selectedFlow.response?.headers?.['Content-Type'] || ''}
-                  {@const decodedBodyText = $selectedFlow.response.decodedBody ? bytesToString($selectedFlow.response.decodedBody) : bodyText}
 
                   {#if isImage(contentType)}
                     <div class="image-preview">
-                      {#if bodyText}
+                      {#if $selectedFlow.response.base64Content || responseContent}
                         <div class="image-container">
                           {#if isSVG(contentType)}
                             <!-- SVG图片直接显示文本内容 -->
-                            <div class="svg-container" innerHTML={decodedBodyText}></div>
+                            <div class="svg-container" innerHTML={$selectedFlow.response.textContent || responseContent}></div>
                           {:else}
                             <!-- 其他图片使用base64显示 -->
                             <img
-                              src="data:{contentType};base64,{bodyText}"
+                              src="data:{contentType};base64,{$selectedFlow.response.base64Content || btoa(responseContent)}"
                               alt="Response Image"
                               class="response-image"
                               on:error={(e) => {
-                                const encoded = safeBase64Encode(bodyText);
-                                if (encoded && encoded !== bodyText) {
-                                  e.target.src = `data:${contentType};base64,${encoded}`;
-                                }
+                                console.error('Failed to load image:', e);
                               }}
                             />
                           {/if}
@@ -716,7 +792,7 @@
                   {:else if isHTML(contentType)}
                     <div class="html-preview">
                       <iframe
-                        srcdoc={decodedBodyText}
+                        srcdoc={$selectedFlow.response.textContent || responseContent}
                         class="html-iframe"
                         title="HTML Preview"
                       ></iframe>
@@ -822,8 +898,18 @@
   .panel-content {
     flex: 1;
     overflow: auto;
-    padding: 12px;
+    padding: 0;
     text-align: left;
+  }
+
+  /* 文本内容容器 - 只为文本内容添加 padding */
+  .text-content-container {
+    padding: 8px;
+  }
+
+  /* Headers 视图容器 */
+  .headers-view-container {
+    padding: 8px;
   }
 
   .headers-view {
@@ -960,10 +1046,10 @@
 
   .content-type-label {
     padding: 4px 8px;
-    background-color: #FF6B6B;
+    background-color: #fabebe;
     color: white;
     border-radius: 12px;
-    font-size: 10px;
+    font-size: 6px;
     font-weight: 500;
   }
 
@@ -1271,5 +1357,77 @@
     .request-url {
       font-size: 12px;
     }
+  }
+
+  /* 二进制内容样式 - Mini 版本 */
+  .binary-content-mini {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .binary-info-mini {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    padding: 4px 8px;
+    background: #2D2D30;
+    border-radius: 2px;
+  }
+
+  .content-type-label-mini {
+    color: #569CD6;
+    font-weight: 500;
+    font-size: 10px;
+  }
+
+  .content-size-mini {
+    color: #9CDCFE;
+    font-size: 9px;
+  }
+
+  .base64-content-mini {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    margin-top: 0;
+  }
+
+  /* 保留原有的二进制内容样式（用于其他地方） */
+  .base64-content {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    background: #1E1E1E;
+    margin-top: 8px;
+  }
+
+  .binary-content .binary-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #3E3E42;
+  }
+
+  .binary-content .content-type-label {
+    color: #569CD6;
+    font-weight: 500;
+    font-size: 12px;
+  }
+
+  .binary-content .content-size {
+    color: #9CDCFE;
+    font-size: 11px;
+  }
+
+  .binary-content .binary-placeholder {
+    color: #808080;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
   }
 </style>

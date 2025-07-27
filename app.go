@@ -101,19 +101,22 @@ func (a *App) startup(ctx context.Context) {
 	reverseProxyInterceptor := features.NewReverseProxyInterceptor(a.featureManager.ReverseProxy)
 
 	// 按顺序添加拦截器（顺序很重要）
-	a.proxyServer.AddRequestInterceptor(allowBlockInterceptor)     // 首先检查允许/阻止
-	a.proxyServer.AddRequestInterceptor(reverseProxyInterceptor)   // 然后检查反向代理
-	a.proxyServer.AddRequestInterceptor(upstreamInterceptor)       // 然后检查上游代理
-	a.proxyServer.AddRequestInterceptor(mapLocalInterceptor)       // 然后检查Map Local
-	a.proxyServer.AddRequestInterceptor(breakpointInterceptor)     // 然后检查断点
-	a.proxyServer.AddRequestInterceptor(scriptInterceptor)        // 最后执行脚本
+	a.proxyServer.AddRequestInterceptor(allowBlockInterceptor)   // 首先检查允许/阻止
+	a.proxyServer.AddRequestInterceptor(reverseProxyInterceptor) // 然后检查反向代理
+	a.proxyServer.AddRequestInterceptor(upstreamInterceptor)     // 然后检查上游代理
+	a.proxyServer.AddRequestInterceptor(mapLocalInterceptor)     // 然后检查Map Local
+	a.proxyServer.AddRequestInterceptor(breakpointInterceptor)   // 然后检查断点
+	a.proxyServer.AddRequestInterceptor(scriptInterceptor)       // 最后执行脚本
 
-	a.proxyServer.AddResponseInterceptor(breakpointInterceptor)    // 响应断点
-	a.proxyServer.AddResponseInterceptor(scriptInterceptor)        // 响应脚本
+	a.proxyServer.AddResponseInterceptor(breakpointInterceptor) // 响应断点
+	a.proxyServer.AddResponseInterceptor(scriptInterceptor)     // 响应脚本
 
 	// 设置流量处理回调
 	a.proxyServer.SetFlowHandler(func(flow *proxycore.Flow) {
 		// 通过Wails事件系统发送新的流量到前端
+		if flow.URL == "https://geeknote.net:443/assets/application-3e94dbd9.js" {
+			fmt.Println(flow.Response.DecodedBody)
+		}
 		runtime.EventsEmit(ctx, "new-flow", flow)
 	})
 }

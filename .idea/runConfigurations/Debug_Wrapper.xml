@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Debug Wrapper" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="ProxyWoman" />
+    <working_directory value="$PROJECT_DIR$" />
+    <envs>
+      <env name="GOROOT" value="/usr/local/go" />
+      <env name="GOPATH" value="/Users/zhangyw/go" />
+      <env name="PATH" value="/usr/local/go/bin:/Users/zhangyw/go/bin:$PATH" />
+    </envs>
+    <kind value="FILE" />
+    <package value="ProxyWoman" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/debug_wrapper.go" />
+    <method v="2" />
+  </configuration>
+</component>

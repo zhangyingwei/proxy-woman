@@ -657,10 +657,13 @@ export namespace proxycore {
 	    status: string;
 	    headers: Record<string, string>;
 	    body: number[];
-	    decodedBody: number[];
+	    decodedBody: string;
+	    textContent: string;
+	    base64Content: string;
 	    hexView: string;
 	    isText: boolean;
 	    isBinary: boolean;
+	    isDocument: boolean;
 	    contentType: string;
 	    encoding: string;
 	    raw: string;
@@ -676,9 +679,12 @@ export namespace proxycore {
 	        this.headers = source["headers"];
 	        this.body = source["body"];
 	        this.decodedBody = source["decodedBody"];
+	        this.textContent = source["textContent"];
+	        this.base64Content = source["base64Content"];
 	        this.hexView = source["hexView"];
 	        this.isText = source["isText"];
 	        this.isBinary = source["isBinary"];
+	        this.isDocument = source["isDocument"];
 	        this.contentType = source["contentType"];
 	        this.encoding = source["encoding"];
 	        this.raw = source["raw"];

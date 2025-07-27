@@ -15,5 +15,9 @@
     "productVersion": "1.0.0",
     "copyright": "© 2024 zhangyingwei. All rights reserved.",
     "comments": "A modern network proxy analysis tool with elegant design"
+  },
+  "debug": {
+    "enabled": true,
+    "logLevel": "debug"
   }
 }
