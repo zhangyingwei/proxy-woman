@@ -390,8 +390,37 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 	consoleObj.Set("log", console.LogJS)
 	vm.Set("console", consoleObj)
 
-	// 创建完整的context对象供脚本使用
-	vm.Set("context", context)
+	// 创建JavaScript友好的context对象
+	contextObj := vm.NewObject()
+	contextObj.Set("flow", context.Flow)
+
+	// 设置request对象
+	if context.Request != nil {
+		requestObj := vm.NewObject()
+		requestObj.Set("method", context.Request.Method)
+		requestObj.Set("url", context.Request.URL)
+		requestObj.Set("headers", context.Request.Headers)
+		requestObj.Set("body", context.Request.Body)
+		contextObj.Set("request", requestObj)
+		console.LogJS(fmt.Sprintf("Created request object: method=%s, url=%s", context.Request.Method, context.Request.URL))
+	} else {
+		console.LogJS("No request object available")
+	}
+
+	// 设置response对象
+	if context.Response != nil {
+		responseObj := vm.NewObject()
+		responseObj.Set("statusCode", context.Response.StatusCode)
+		responseObj.Set("status", context.Response.Status)
+		responseObj.Set("headers", context.Response.Headers)
+		responseObj.Set("body", context.Response.Body)
+		contextObj.Set("response", responseObj)
+		console.LogJS(fmt.Sprintf("Created response object: statusCode=%d, status=%s", context.Response.StatusCode, context.Response.Status))
+	} else {
+		console.LogJS("No response object available")
+	}
+
+	vm.Set("context", contextObj)
 
 	// 添加一些实用函数
 	vm.Set("setTimeout", func(callback func(), delay int) {
@@ -411,18 +440,20 @@ func (sm *ScriptManager) executeScript(script *Script, flow *proxycore.Flow, pha
 	if phase == "request" {
 		if onRequestFunc := vm.Get("onRequest"); onRequestFunc != nil {
 			if callable, ok := goja.AssertFunction(onRequestFunc); ok {
-				_, err := callable(goja.Undefined(), vm.ToValue(context))
+				// 传递JavaScript友好的context对象
+				_, err := callable(goja.Undefined(), vm.Get("context"))
 				if err != nil {
-					console.Log(fmt.Sprintf("onRequest function error: %v", err))
+					console.LogJS(fmt.Sprintf("onRequest function error: %v", err))
 				}
 			}
 		}
 	} else if phase == "response" {
 		if onResponseFunc := vm.Get("onResponse"); onResponseFunc != nil {
 			if callable, ok := goja.AssertFunction(onResponseFunc); ok {
-				_, err := callable(goja.Undefined(), vm.ToValue(context))
+				// 传递JavaScript友好的context对象
+				_, err := callable(goja.Undefined(), vm.Get("context"))
 				if err != nil {
-					console.Log(fmt.Sprintf("onResponse function error: %v", err))
+					console.LogJS(fmt.Sprintf("onResponse function error: %v", err))
 				}
 			}
 		}
