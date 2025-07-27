@@ -121,6 +121,11 @@
     return contentType && contentType.startsWith('image/');
   }
 
+  // 检查是否为SVG图片
+  function isSVG(contentType: string): boolean {
+    return contentType && contentType.includes('image/svg');
+  }
+
   // 检查是否为文本类型内容
   function isTextType(contentType: string): boolean {
     if (!contentType) return false;
@@ -506,7 +511,7 @@
                     <SimpleCodeEditor
                       value={formattedContent}
                       language={contentType}
-                      height="300px"
+                      height="auto"
                     />
                   </div>
                 {:else if $selectedFlow.method !== 'GET'}
@@ -596,7 +601,7 @@
                     <SimpleCodeEditor
                       value={formattedContent}
                       language={contentType}
-                      height="400px"
+                      height="auto"
                     />
                   {:else}
                     <!-- 二进制内容显示16进制 -->
@@ -635,17 +640,23 @@
                     <div class="image-preview">
                       {#if bodyText}
                         <div class="image-container">
-                          <img
-                            src="data:{contentType};base64,{bodyText}"
-                            alt="Response Image"
-                            class="response-image"
-                            on:error={(e) => {
-                              const encoded = safeBase64Encode(bodyText);
-                              if (encoded && encoded !== bodyText) {
-                                e.target.src = `data:${contentType};base64,${encoded}`;
-                              }
-                            }}
-                          />
+                          {#if isSVG(contentType)}
+                            <!-- SVG图片直接显示文本内容 -->
+                            <div class="svg-container" innerHTML={decodedBodyText}></div>
+                          {:else}
+                            <!-- 其他图片使用base64显示 -->
+                            <img
+                              src="data:{contentType};base64,{bodyText}"
+                              alt="Response Image"
+                              class="response-image"
+                              on:error={(e) => {
+                                const encoded = safeBase64Encode(bodyText);
+                                if (encoded && encoded !== bodyText) {
+                                  e.target.src = `data:${contentType};base64,${encoded}`;
+                                }
+                              }}
+                            />
+                          {/if}
                         </div>
                       {:else}
                         <div class="error-message">无图片数据</div>
@@ -938,6 +949,22 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
 
+  .svg-container {
+    max-width: 100%;
+    max-height: 400px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .svg-container :global(svg) {
+    max-width: 100%;
+    max-height: 400px;
+    height: auto;
+    width: auto;
+  }
+
   .html-preview {
     background-color: #1E1E1E;
     border-radius: 4px;
@@ -1044,7 +1071,7 @@
     border-bottom: 1px solid #3E3E42;
     padding: 12px 16px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     flex-wrap: wrap;
     gap: 12px;
@@ -1103,6 +1130,7 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+    margin-left: auto;
   }
 
   .status-code {

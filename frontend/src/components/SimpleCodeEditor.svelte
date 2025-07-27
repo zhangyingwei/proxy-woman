@@ -182,14 +182,15 @@
   <div
     bind:this={container}
     class="code-editor"
-    style="height: {height};"
+    class:auto-height={height === 'auto'}
+    style={height !== 'auto' ? `height: ${height};` : ''}
   >
     {#if !value}
       <div class="empty-state">无内容</div>
     {/if}
   </div>
 {:else}
-  <div class="code-editor-wrapper" style="height: {height};">
+  <div class="code-editor-wrapper" class:auto-height={height === 'auto'} style={height !== 'auto' ? `height: ${height};` : ''}>
     <textarea
       bind:value
       class="code-textarea"
@@ -201,18 +202,29 @@
 
 <style>
   .code-editor {
-    background: #1e1e1e;
-    border: 1px solid #3E3E42;
-    border-radius: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
     overflow: auto;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 12px;
     line-height: 1.4;
   }
 
+  .code-editor.auto-height {
+    height: auto;
+    min-height: 50px;
+    overflow: visible;
+  }
+
+  .code-editor-wrapper.auto-height {
+    height: auto;
+    min-height: 50px;
+  }
+
   .code-editor :global(pre) {
     margin: 0;
-    padding: 12px;
+    padding: 0;
     background: transparent;
     color: #d4d4d4;
     white-space: pre-wrap;
@@ -230,7 +242,7 @@
   }
 
   .empty-state {
-    padding: 12px;
+    padding: 0;
     color: #888;
     font-style: italic;
     text-align: left;
