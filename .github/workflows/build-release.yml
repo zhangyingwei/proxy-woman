@@ -1,0 +1,268 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        default: '1.0.0'
+
+env:
+  GO_VERSION: '1.21'
+  NODE_VERSION: '22.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install dependencies
+        run: |
+          go mod tidy
+          cd frontend && npm install
+
+      - name: Build Windows app
+        run: |
+          wails build -platform windows/amd64 -ldflags "-s -w" -tags desktop
+        env:
+          CGO_ENABLED: 1
+
+      - name: Create Windows package
+        run: |
+          New-Item -ItemType Directory -Path "dist" -Force
+          $version = "${{ github.event.inputs.version || github.ref_name }}"
+          $version = $version -replace '^v', ''
+
+          # Verify build output
+          if (!(Test-Path "build/bin/ProxyWoman.exe")) {
+            Write-Error "ProxyWoman.exe not found!"
+            exit 1
+          }
+
+          # Create ZIP package
+          $tempDir = "temp_windows"
+          New-Item -ItemType Directory -Path $tempDir -Force
+          Copy-Item "build/bin/ProxyWoman.exe" -Destination $tempDir
+          Copy-Item "README.md" -Destination $tempDir -ErrorAction SilentlyContinue
+          Copy-Item "LICENSE" -Destination $tempDir -ErrorAction SilentlyContinue
+
+          # Create start script
+          @"
+          @echo off
+          echo Starting ProxyWoman...
+          echo Web UI: http://localhost:3000
+          echo Proxy: http://localhost:8080
+          echo.
+          ProxyWoman.exe
+          pause
+          "@ | Out-File -FilePath "$tempDir/start.bat" -Encoding ASCII
+
+          # Create ZIP
+          Compress-Archive -Path "$tempDir/*" -DestinationPath "dist/ProxyWoman-$version-Windows.zip"
+          Remove-Item -Recurse -Force $tempDir
+
+          # Verify package
+          Write-Host "Package created: dist/ProxyWoman-$version-Windows.zip"
+          Write-Host "Package size: $((Get-Item "dist/ProxyWoman-$version-Windows.zip").Length / 1MB) MB"
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-package
+          path: dist/ProxyWoman-*-Windows.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install dependencies
+        run: |
+          go mod tidy
+          cd frontend && npm install
+
+      - name: Build macOS app
+        run: |
+          export CGO_ENABLED=1
+          export CGO_LDFLAGS="-framework UniformTypeIdentifiers"
+          wails build -platform darwin/universal -ldflags "-s -w" -tags desktop
+
+      - name: Create macOS package
+        run: |
+          mkdir -p dist
+          version="${{ github.event.inputs.version || github.ref_name }}"
+          version="${version#v}"
+
+          # Verify build output
+          app_name="ProxyWoman"
+          if [ ! -d "build/bin/${app_name}.app" ]; then
+            echo "Error: ${app_name}.app not found!"
+            exit 1
+          fi
+
+          # Create DMG
+          temp_dir="temp_dmg"
+          rm -rf "$temp_dir"
+          mkdir -p "$temp_dir"
+
+          # Copy app
+          cp -R "build/bin/${app_name}.app" "$temp_dir/"
+
+          # Create Applications symlink
+          ln -s /Applications "$temp_dir/Applications"
+
+          # Add README to DMG
+          if [ -f "README.md" ]; then
+            cp "README.md" "$temp_dir/"
+          fi
+
+          # Create DMG with better settings
+          dmg_name="ProxyWoman-${version}-macOS"
+          hdiutil create -volname "$app_name" -srcfolder "$temp_dir" -ov -format UDZO -imagekey zlib-level=9 "dist/${dmg_name}.dmg"
+
+          # Cleanup
+          rm -rf "$temp_dir"
+
+          # Verify package
+          echo "Package created: dist/${dmg_name}.dmg"
+          echo "Package size: $(du -h "dist/${dmg_name}.dmg" | cut -f1)"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-package
+          path: dist/ProxyWoman-*-macOS.dmg
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-package
+          path: dist/
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-package
+          path: dist/
+
+      - name: List artifacts
+        run: |
+          echo "📦 Release artifacts:"
+          ls -la dist/
+          echo ""
+          echo "📊 File sizes:"
+          du -h dist/*
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+
+          cat > release_notes.md << 'EOF'
+          # ProxyWoman ${{ github.ref_name }}
+
+          ## 🎉 新版本发布
+
+          ProxyWoman 是一个现代化的网络代理分析工具，具有优雅的设计和强大的脚本功能。
+
+          ## 📦 安装包
+
+          ### Windows
+          - **ProxyWoman-${version}-Windows.zip** - Windows 便携版
+          - 支持 Windows 10/11 (64位)
+          - 解压即用，无需安装
+
+          ### macOS
+          - **ProxyWoman-${version}-macOS.dmg** - macOS 安装包
+          - 支持 Intel 和 Apple Silicon 处理器
+          - 支持 macOS 10.15+ (Catalina 或更高版本)
+
+          ## 🚀 主要功能
+
+          - ✅ **现代化代理服务器** - HTTP/HTTPS 流量拦截和分析
+          - ✅ **优雅的用户界面** - 基于 Svelte 的现代化 Web 界面
+          - ✅ **实时流量监控** - 实时显示网络请求和响应
+          - ✅ **强大的脚本系统** - JavaScript 脚本修改请求和响应
+          - ✅ **智能应用识别** - 自动识别 40+ 常见应用
+          - ✅ **Gzip 支持** - 自动处理压缩响应
+          - ✅ **跨平台支持** - Windows、macOS、Linux
+
+          ## 🔧 快速开始
+
+          1. 下载对应平台的安装包
+          2. Windows: 解压 ZIP 文件，运行 `start.bat`
+          3. macOS: 打开 DMG 文件，拖拽到 Applications 文件夹
+          4. 访问 http://localhost:3000 查看界面
+          5. 设置代理为 127.0.0.1:8080
+
+          ## 📝 更新日志
+
+          详细的更新内容请查看下方的自动生成的更新日志。
+
+          ---
+
+          **构建信息:**
+          - Go 版本: ${{ env.GO_VERSION }}
+          - Node.js 版本: ${{ env.NODE_VERSION }}
+          - 构建时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/ProxyWoman-*-Windows.zip
+            dist/ProxyWoman-*-macOS.dmg
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
