@@ -207,6 +207,28 @@ jobs:
           export CGO_LDFLAGS="-framework UniformTypeIdentifiers"
           wails build -platform darwin/universal -ldflags "-s -w" -tags desktop
 
+      - name: Fix macOS security issues
+        run: |
+          echo "Fixing macOS security issues..."
+          app_name="ProxyWoman"
+          app_path="build/bin/${app_name}.app"
+
+          if [ -d "$app_path" ]; then
+            # 移除隔离属性
+            xattr -cr "$app_path" 2>/dev/null || true
+
+            # 设置执行权限
+            chmod +x "$app_path/Contents/MacOS/$app_name" 2>/dev/null || true
+
+            # 尝试自签名
+            codesign --force --deep --sign - "$app_path" 2>/dev/null || true
+
+            echo "✅ Security fixes applied"
+          else
+            echo "❌ App not found: $app_path"
+            exit 1
+          fi
+
       - name: Verify build output
         run: |
           echo "Checking build output..."
@@ -239,17 +261,44 @@ jobs:
           # 创建Applications链接
           ln -s /Applications "$temp_dir/Applications"
           
+          # 创建安装指南
+          cat > "$temp_dir/安装指南.txt" << 'EOF'
+          ProxyWoman macOS 安装指南
+
+          如果遇到"无法验证开发者"错误，请按以下步骤操作：
+
+          方法1 - 右键菜单（推荐）:
+          1. 右键点击 ProxyWoman.app
+          2. 选择 "打开"
+          3. 在对话框中点击 "打开"
+
+          方法2 - 系统偏好设置:
+          1. 尝试打开应用（会显示错误）
+          2. 打开 系统偏好设置 → 安全性与隐私
+          3. 在 通用 标签页底部，点击 "仍要打开"
+
+          方法3 - 终端命令:
+          sudo xattr -cr /Applications/ProxyWoman.app
+
+          启动后访问: http://localhost:3000
+          代理设置: 127.0.0.1:8080
+          EOF
+
           # 添加README
           if [ -f "README.md" ]; then
             cp "README.md" "$temp_dir/"
           fi
-          
+
           # 创建DMG
           dmg_name="ProxyWoman-${version}-macOS"
           echo "Creating DMG: ${dmg_name}.dmg"
           hdiutil create -volname "$app_name" -srcfolder "$temp_dir" -ov -format UDZO -imagekey zlib-level=9 "dist/${dmg_name}.dmg"
+
+          # 移除DMG的隔离属性
+          xattr -cr "dist/${dmg_name}.dmg" 2>/dev/null || true
+
           rm -rf "$temp_dir"
-          
+
           echo "✅ Package created: dist/${dmg_name}.dmg"
           echo "Package size: $(du -h "dist/${dmg_name}.dmg" | cut -f1)"
 
